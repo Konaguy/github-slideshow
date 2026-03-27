@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}{{ vuln.cve_id }}{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('vulnerabilities.index') }}">Vulnerabilities</a></li>
+<li class="breadcrumb-item active">{{ vuln.cve_id }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <h1 class="h3 mb-1">
+      <span class="badge bg-{{ vuln.severity_badge }} me-2">{{ vuln.severity.upper() }}</span>
+      <code>{{ vuln.cve_id }}</code>
+    </h1>
+    <p class="text-muted mb-0">{{ vuln.title or 'No title available' }}</p>
+  </div>
+  <span class="badge bg-{{ vuln.status_badge }} fs-6">{{ vuln.status.replace('_',' ').title() }}</span>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card mb-3">
+      <div class="card-header"><h6 class="mb-0">Details</h6></div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-4">Endpoint</dt>
+          <dd class="col-sm-8">
+            <a href="{{ url_for('endpoints.detail', endpoint_id=endpoint.id) }}">{{ endpoint.hostname }}</a>
+            (<code>{{ endpoint.ip_address }}</code>)
+          </dd>
+          <dt class="col-sm-4">Affected Component</dt>
+          <dd class="col-sm-8">{{ vuln.affected_component or '—' }}</dd>
+          <dt class="col-sm-4">CVSS Score</dt>
+          <dd class="col-sm-8">
+            {% if vuln.cvss_score %}
+              <span class="fs-5 fw-bold {% if vuln.cvss_score >= 9 %}text-danger{% elif vuln.cvss_score >= 7 %}text-warning{% else %}text-info{% endif %}">
+                {{ '%.1f'|format(vuln.cvss_score) }}
+              </span>/10
+            {% else %}—{% endif %}
+          </dd>
+          <dt class="col-sm-4">Scanned At</dt>
+          <dd class="col-sm-8">{{ vuln.scanned_at.strftime('%Y-%m-%d %H:%M') if vuln.scanned_at else '—' }}</dd>
+          <dt class="col-sm-4">Resolved At</dt>
+          <dd class="col-sm-8">{{ vuln.resolved_at.strftime('%Y-%m-%d %H:%M') if vuln.resolved_at else '—' }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    {% if vuln.remediation %}
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0"><i class="bi bi-wrench me-1"></i>Remediation</h6></div>
+      <div class="card-body">
+        <p class="mb-0">{{ vuln.remediation }}</p>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">Update Status</h6></div>
+      <div class="card-body">
+        {% for status_opt in ['open','mitigated','accepted','false_positive'] %}
+        <form method="POST" action="{{ url_for('vulnerabilities.update_status', vuln_id=vuln.id) }}" class="mb-2">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="status" value="{{ status_opt }}">
+          <button type="submit" class="btn btn-outline-secondary w-100 text-start {% if vuln.status == status_opt %}active{% endif %}">
+            {{ status_opt.replace('_',' ').title() }}
+            {% if vuln.status == status_opt %}<i class="bi bi-check-circle-fill ms-1 text-success"></i>{% endif %}
+          </button>
+        </form>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

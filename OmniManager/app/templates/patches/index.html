@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Patches{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+<li class="breadcrumb-item active">Patches</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0"><i class="bi bi-patch-check me-2"></i>Patch Management</h1>
+  {% if endpoint_id %}
+  <form method="POST" action="{{ url_for('patches.install_all') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="endpoint_id" value="{{ endpoint_id }}">
+    <button type="submit" class="btn btn-warning btn-sm"
+            onclick="return confirm('Install ALL missing patches?')">
+      <i class="bi bi-download me-1"></i>Install All Missing
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="GET" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <select name="endpoint_id" class="form-select form-select-sm">
+          <option value="">All Endpoints</option>
+          {% for ep in endpoints %}
+          <option value="{{ ep.id }}" {% if endpoint_id == ep.id %}selected{% endif %}>{{ ep.hostname }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <select name="severity" class="form-select form-select-sm">
+          <option value="">All Severities</option>
+          {% for s in ['critical','important','moderate','low','unspecified'] %}
+          <option value="{{ s }}" {% if severity_filter == s %}selected{% endif %}>{{ s.title() }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <select name="status" class="form-select form-select-sm">
+          <option value="">All Statuses</option>
+          {% for s in ['missing','installed','installing','failed'] %}
+          <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>{{ s.title() }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-secondary">Filter</button>
+        <a href="{{ url_for('patches.index') }}" class="btn btn-sm btn-link">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Endpoint</th>
+          <th>KB ID</th>
+          <th>Title</th>
+          <th>Severity</th>
+          <th>Status</th>
+          <th>Scanned</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in results.items %}
+        <tr>
+          <td>
+            <a href="{{ url_for('endpoints.detail', endpoint_id=r.endpoint.id) }}" class="text-decoration-none">
+              {{ r.endpoint.hostname }}
+            </a>
+          </td>
+          <td><code>{{ r.kb_id }}</code></td>
+          <td class="text-truncate" style="max-width:280px" title="{{ r.title }}">{{ r.title }}</td>
+          <td><span class="badge bg-{{ r.severity_badge }}">{{ r.severity }}</span></td>
+          <td><span class="badge bg-{{ r.status_badge }}">{{ r.status }}</span></td>
+          <td class="small text-muted">{{ r.scanned_at.strftime('%Y-%m-%d %H:%M') if r.scanned_at else '—' }}</td>
+          <td class="text-end">
+            {% if r.status == 'missing' %}
+            <form method="POST" action="{{ url_for('patches.install') }}" class="d-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="endpoint_id" value="{{ r.endpoint_id }}">
+              <input type="hidden" name="kb_id" value="{{ r.kb_id }}">
+              <button type="submit" class="btn btn-sm btn-warning">
+                <i class="bi bi-download"></i>
+              </button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-5">
+            <i class="bi bi-patch-check fs-3 d-block mb-2"></i>
+            No patches found. Select an endpoint and run a scan.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if results.pages > 1 %}
+  <div class="card-footer">
+    <nav>
+      <ul class="pagination pagination-sm mb-0 justify-content-center">
+        {% for p in results.iter_pages() %}
+          {% if p %}
+            <li class="page-item {% if p == results.page %}active{% endif %}">
+              <a class="page-link" href="{{ url_for('patches.index', page=p, endpoint_id=endpoint_id, severity=severity_filter, status=status_filter) }}">{{ p }}</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Add to Catalog{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('software.catalog') }}">Catalog</a></li>
+<li class="breadcrumb-item active">Add</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0"><i class="bi bi-plus-circle me-2"></i>Add to Software Catalog</h1>
+</div>
+<div class="card" style="max-width:640px">
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('software.add_catalog') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="row g-3">
+        <div class="col-sm-8">
+          <label class="form-label">Name <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" name="name" required>
+        </div>
+        <div class="col-sm-4">
+          <label class="form-label">Category</label>
+          <input type="text" class="form-control" name="category" placeholder="Security, Office…">
+        </div>
+        <div class="col-sm-6">
+          <label class="form-label">Publisher</label>
+          <input type="text" class="form-control" name="publisher">
+        </div>
+        <div class="col-sm-6">
+          <label class="form-label">Version</label>
+          <input type="text" class="form-control" name="version">
+        </div>
+        <div class="col-12">
+          <label class="form-label">Install Command</label>
+          <input type="text" class="form-control font-monospace" name="install_command"
+                 placeholder="choco install 7zip -y">
+        </div>
+        <div class="col-12">
+          <label class="form-label">Uninstall Command</label>
+          <input type="text" class="form-control font-monospace" name="uninstall_command">
+        </div>
+        <div class="col-12">
+          <label class="form-label">Silent Arguments</label>
+          <input type="text" class="form-control font-monospace" name="silent_args" placeholder="/S /silent">
+        </div>
+        <div class="col-12">
+          <label class="form-label">Description</label>
+          <textarea class="form-control" name="description" rows="2"></textarea>
+        </div>
+        <div class="col-12 d-flex gap-2">
+          <button type="submit" class="btn btn-primary">Add to Catalog</button>
+          <a href="{{ url_for('software.catalog') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

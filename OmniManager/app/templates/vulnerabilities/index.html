@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Vulnerabilities{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+<li class="breadcrumb-item active">Vulnerabilities</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0"><i class="bi bi-shield-exclamation me-2"></i>Vulnerabilities</h1>
+  <a href="{{ url_for('vulnerabilities.summary') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-bar-chart me-1"></i>Summary
+  </a>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="GET" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <select name="endpoint_id" class="form-select form-select-sm">
+          <option value="">All Endpoints</option>
+          {% for ep in endpoints %}
+          <option value="{{ ep.id }}" {% if endpoint_id == ep.id %}selected{% endif %}>{{ ep.hostname }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <select name="severity" class="form-select form-select-sm">
+          <option value="">All Severities</option>
+          {% for s in ['critical','high','medium','low','info'] %}
+          <option value="{{ s }}" {% if severity_filter == s %}selected{% endif %}>{{ s.title() }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <select name="status" class="form-select form-select-sm">
+          <option value="">All Statuses</option>
+          {% for s in ['open','mitigated','accepted','false_positive'] %}
+          <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>{{ s.replace('_',' ').title() }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-secondary">Filter</button>
+        <a href="{{ url_for('vulnerabilities.index') }}" class="btn btn-sm btn-link">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>CVE / ID</th>
+          <th>Title</th>
+          <th>Endpoint</th>
+          <th>Severity</th>
+          <th>CVSS</th>
+          <th>Component</th>
+          <th>Status</th>
+          <th>Scanned</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in results.items %}
+        <tr>
+          <td><code>{{ v.cve_id }}</code></td>
+          <td class="text-truncate" style="max-width:200px" title="{{ v.title }}">{{ v.title or '—' }}</td>
+          <td>
+            <a href="{{ url_for('endpoints.detail', endpoint_id=v.endpoint.id) }}" class="text-decoration-none small">
+              {{ v.endpoint.hostname }}
+            </a>
+          </td>
+          <td><span class="badge bg-{{ v.severity_badge }}">{{ v.severity }}</span></td>
+          <td>
+            {% if v.cvss_score %}
+              <span class="fw-semibold {% if v.cvss_score >= 9 %}text-danger{% elif v.cvss_score >= 7 %}text-warning{% else %}text-info{% endif %}">
+                {{ '%.1f'|format(v.cvss_score) }}
+              </span>
+            {% else %}—{% endif %}
+          </td>
+          <td class="small text-muted text-truncate" style="max-width:140px">{{ v.affected_component or '—' }}</td>
+          <td><span class="badge bg-{{ v.status_badge }}">{{ v.status.replace('_',' ') }}</span></td>
+          <td class="small text-muted">{{ v.scanned_at.strftime('%Y-%m-%d') if v.scanned_at else '—' }}</td>
+          <td class="text-end">
+            <div class="dropdown">
+              <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                Action
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                  <a class="dropdown-item" href="{{ url_for('vulnerabilities.detail', vuln_id=v.id) }}">
+                    <i class="bi bi-info-circle me-1"></i>Details
+                  </a>
+                </li>
+                {% for status_opt in ['open','mitigated','accepted','false_positive'] %}
+                {% if status_opt != v.status %}
+                <li>
+                  <form method="POST" action="{{ url_for('vulnerabilities.update_status', vuln_id=v.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="status" value="{{ status_opt }}">
+                    <button type="submit" class="dropdown-item">
+                      Mark as {{ status_opt.replace('_',' ').title() }}
+                    </button>
+                  </form>
+                </li>
+                {% endif %}
+                {% endfor %}
+              </ul>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" class="text-center text-muted py-5">
+            <i class="bi bi-shield-check fs-3 d-block mb-2 text-success"></i>
+            No vulnerabilities found. Run a scan from an endpoint page.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if results.pages > 1 %}
+  <div class="card-footer">
+    <nav>
+      <ul class="pagination pagination-sm mb-0 justify-content-center">
+        {% for p in results.iter_pages() %}
+          {% if p %}
+            <li class="page-item {% if p == results.page %}active{% endif %}">
+              <a class="page-link" href="{{ url_for('vulnerabilities.index', page=p, endpoint_id=endpoint_id, severity=severity_filter, status=status_filter) }}">{{ p }}</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

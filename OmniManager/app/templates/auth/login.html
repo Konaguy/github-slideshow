@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center omni-login-bg">
+  <div class="card omni-login-card shadow-lg">
+    <div class="card-body p-5">
+      <div class="text-center mb-4">
+        <i class="bi bi-cpu-fill text-primary fs-1"></i>
+        <h2 class="mt-2 fw-bold">OmniManager</h2>
+        <p class="text-muted small">Windows Endpoint Management</p>
+      </div>
+
+      <form method="POST" action="{{ url_for('auth.login') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="mb-3">
+          <label class="form-label" for="username">Username</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-person"></i></span>
+            <input type="text" class="form-control" id="username" name="username" required autofocus>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="password">Password</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+            <input type="password" class="form-control" id="password" name="password" required>
+          </div>
+        </div>
+        <div class="mb-4 form-check">
+          <input type="checkbox" class="form-check-input" id="remember" name="remember">
+          <label class="form-check-label" for="remember">Remember me</label>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">
+          <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

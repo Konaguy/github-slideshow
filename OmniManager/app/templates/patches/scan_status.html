@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Patch Scan – {{ endpoint.hostname }}{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('patches.index') }}">Patches</a></li>
+<li class="breadcrumb-item active">Scan – {{ endpoint.hostname }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">
+    <i class="bi bi-patch-check me-2"></i>Patch Scan
+    <span class="text-muted fw-normal">— {{ endpoint.hostname }}</span>
+  </h1>
+  <a href="{{ url_for('patches.index', endpoint_id=endpoint.id) }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Back to Patches
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-header d-flex align-items-center gap-2">
+    <div class="spinner-border spinner-border-sm text-primary" id="scanSpinner"></div>
+    <span id="scanStatusText">Scanning…</span>
+    <span class="ms-auto badge bg-secondary" id="patchCount">0 found</span>
+  </div>
+  <div class="card-body p-0">
+    <div id="patchFeed" style="height:420px;overflow-y:auto;">
+      <table class="table table-sm table-hover mb-0">
+        <thead class="sticky-top bg-body">
+          <tr><th>KB ID</th><th>Title</th><th>Event</th></tr>
+        </thead>
+        <tbody id="patchFeedBody">
+          <tr id="emptyRow">
+            <td colspan="3" class="text-center text-muted py-4">
+              <div class="spinner-border text-primary mb-2"></div>
+              <div>Connecting to {{ endpoint.hostname }}…</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const socket = io();
+const room = 'patch_scan_{{ endpoint.id }}';
+let count = 0;
+
+socket.emit('join', {room});
+
+socket.on('patch_found', data => {
+  count++;
+  document.getElementById('patchCount').textContent = `${count} found`;
+  document.getElementById('emptyRow')?.remove();
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><code>${data.kb_id}</code></td><td>${data.title || '—'}</td>
+    <td><span class="badge bg-warning">missing</span></td>`;
+  document.getElementById('patchFeedBody').prepend(tr);
+});
+
+socket.on('scan_complete', data => {
+  document.getElementById('scanSpinner').style.display = 'none';
+  document.getElementById('scanStatusText').textContent = `Scan complete — ${data.count} missing patches found`;
+});
+
+socket.on('scan_error', data => {
+  document.getElementById('scanSpinner').style.display = 'none';
+  document.getElementById('scanStatusText').innerHTML =
+    `<span class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>${data.error}</span>`;
+});
+</script>
+{% endblock %}

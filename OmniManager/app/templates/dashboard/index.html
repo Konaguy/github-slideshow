@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0"><i class="bi bi-speedometer2 me-2"></i>Dashboard</h1>
+  <small class="text-muted">Last updated: <span id="lastUpdated">—</span></small>
+</div>
+
+<!-- ── KPI Cards ────────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3">
+    <div class="card omni-stat-card border-start border-primary border-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between">
+          <div>
+            <div class="text-muted small">Total Endpoints</div>
+            <div class="fs-2 fw-bold">{{ total_endpoints }}</div>
+          </div>
+          <div class="omni-stat-icon text-primary"><i class="bi bi-pc-display-horizontal"></i></div>
+        </div>
+        <div class="mt-2 small">
+          <span class="text-success me-2"><i class="bi bi-circle-fill" style="font-size:.5rem"></i> {{ online }} Online</span>
+          <span class="text-danger"><i class="bi bi-circle-fill" style="font-size:.5rem"></i> {{ offline }} Offline</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-xl-3">
+    <div class="card omni-stat-card border-start border-warning border-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between">
+          <div>
+            <div class="text-muted small">Missing Patches</div>
+            <div class="fs-2 fw-bold">{{ missing_patches }}</div>
+          </div>
+          <div class="omni-stat-icon text-warning"><i class="bi bi-patch-exclamation"></i></div>
+        </div>
+        <div class="mt-2 small">
+          {% if critical_patches > 0 %}
+            <span class="text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>{{ critical_patches }} Critical</span>
+          {% else %}
+            <span class="text-muted">No critical patches</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-xl-3">
+    <div class="card omni-stat-card border-start border-danger border-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between">
+          <div>
+            <div class="text-muted small">Open Vulnerabilities</div>
+            <div class="fs-2 fw-bold">{{ total_vulns }}</div>
+          </div>
+          <div class="omni-stat-icon text-danger"><i class="bi bi-shield-x"></i></div>
+        </div>
+        <div class="mt-2 small">
+          {% if critical_vulns > 0 %}
+            <span class="text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>{{ critical_vulns }} Critical</span>
+          {% else %}
+            <span class="text-muted">No critical vulnerabilities</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-xl-3">
+    <div class="card omni-stat-card border-start border-info border-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between">
+          <div>
+            <div class="text-muted small">Endpoints Unknown</div>
+            <div class="fs-2 fw-bold">{{ unknown }}</div>
+          </div>
+          <div class="omni-stat-icon text-info"><i class="bi bi-question-circle"></i></div>
+        </div>
+        <div class="mt-2 small text-muted">Not yet contacted</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Quick Actions + Recent Endpoints ────────────────────────────────── -->
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header"><h6 class="mb-0">Quick Actions</h6></div>
+      <div class="card-body d-flex flex-column gap-2">
+        <a href="{{ url_for('endpoints.new') }}" class="btn btn-outline-primary text-start">
+          <i class="bi bi-plus-circle me-2"></i>Add Endpoint
+        </a>
+        <a href="{{ url_for('patches.index') }}" class="btn btn-outline-warning text-start">
+          <i class="bi bi-patch-check me-2"></i>View Missing Patches
+        </a>
+        <a href="{{ url_for('vulnerabilities.index') }}" class="btn btn-outline-danger text-start">
+          <i class="bi bi-shield-exclamation me-2"></i>View Vulnerabilities
+        </a>
+        <a href="{{ url_for('software.index') }}" class="btn btn-outline-info text-start">
+          <i class="bi bi-box-seam me-2"></i>Software Inventory
+        </a>
+        <a href="{{ url_for('rdp.index') }}" class="btn btn-outline-secondary text-start">
+          <i class="bi bi-display me-2"></i>RDP Connect
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">Recent Endpoints</h6>
+        <a href="{{ url_for('endpoints.index') }}" class="btn btn-sm btn-link">View All</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Hostname</th>
+              <th>IP</th>
+              <th>OS</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ep in recent_endpoints %}
+            <tr>
+              <td><i class="bi bi-pc-display me-1 text-muted"></i>{{ ep.hostname }}</td>
+              <td><code>{{ ep.ip_address }}</code></td>
+              <td class="text-truncate" style="max-width:160px">{{ ep.os_name or '—' }}</td>
+              <td><span class="badge bg-{{ ep.status_badge }}">{{ ep.status }}</span></td>
+              <td>
+                <a href="{{ url_for('endpoints.detail', endpoint_id=ep.id) }}" class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-arrow-right"></i>
+                </a>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center text-muted py-4">
+                No endpoints yet. <a href="{{ url_for('endpoints.new') }}">Add one</a>.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+</script>
+{% endblock %}

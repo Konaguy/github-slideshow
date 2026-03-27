@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Vulnerability Summary{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('vulnerabilities.index') }}">Vulnerabilities</a></li>
+<li class="breadcrumb-item active">Summary</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0"><i class="bi bi-bar-chart me-2"></i>Vulnerability Summary</h1>
+  <a href="{{ url_for('vulnerabilities.index') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Back to List
+  </a>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">Open Vulnerabilities by Severity</h6></div>
+      <div class="card-body">
+        {% set severity_colors = {'critical':'danger','high':'warning','medium':'info','low':'secondary','info':'light'} %}
+        {% for severity, count in by_severity %}
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="badge bg-{{ severity_colors.get(severity, 'secondary') }} me-2">{{ severity.title() }}</span>
+          <div class="flex-grow-1 mx-2">
+            <div class="progress" style="height:8px">
+              {% set total = by_severity|sum(attribute=1) %}
+              <div class="progress-bar bg-{{ severity_colors.get(severity, 'secondary') }}"
+                   style="width:{{ (count/total*100)|int if total else 0 }}%"></div>
+            </div>
+          </div>
+          <span class="fw-bold">{{ count }}</span>
+        </div>
+        {% else %}
+        <p class="text-muted text-center mb-0">No open vulnerabilities.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">Top Endpoints by Open Vulnerabilities</h6></div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr><th>Endpoint</th><th class="text-end">Open Vulns</th></tr>
+          </thead>
+          <tbody>
+            {% for hostname, count in by_endpoint %}
+            <tr>
+              <td>{{ hostname }}</td>
+              <td class="text-end"><span class="badge bg-danger">{{ count }}</span></td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="2" class="text-center text-muted py-3">No data available.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

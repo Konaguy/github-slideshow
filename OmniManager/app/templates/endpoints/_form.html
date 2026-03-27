@@ -1,0 +1,67 @@
+<div class="card" style="max-width:680px">
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('endpoints.edit', endpoint_id=endpoint.id) if endpoint is defined and endpoint.id else url_for('endpoints.new') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="row g-3">
+        <div class="col-sm-6">
+          <label class="form-label" for="hostname">Hostname <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="hostname" name="hostname"
+                 value="{{ endpoint.hostname if endpoint is defined else '' }}" required>
+        </div>
+        <div class="col-sm-6">
+          <label class="form-label" for="ip_address">IP Address <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="ip_address" name="ip_address"
+                 value="{{ endpoint.ip_address if endpoint is defined else '' }}" required
+                 pattern="^(\d{1,3}\.){3}\d{1,3}$" placeholder="192.168.1.100">
+        </div>
+        <div class="col-sm-6">
+          <label class="form-label" for="domain">Domain</label>
+          <input type="text" class="form-control" id="domain" name="domain"
+                 value="{{ endpoint.domain if endpoint is defined else '' }}" placeholder="corp.example.com">
+        </div>
+        <div class="col-sm-6">
+          <label class="form-label" for="tags">Tags <small class="text-muted">(comma-separated)</small></label>
+          <input type="text" class="form-control" id="tags" name="tags"
+                 value="{{ endpoint.tags if endpoint is defined else '' }}" placeholder="server, prod, dc1">
+        </div>
+
+        <div class="col-12"><hr class="my-1"><h6 class="text-muted small text-uppercase">WinRM Credentials</h6></div>
+
+        <div class="col-sm-6">
+          <label class="form-label" for="winrm_username">Username</label>
+          <input type="text" class="form-control" id="winrm_username" name="winrm_username"
+                 value="{{ endpoint.winrm_username if endpoint is defined else '' }}" placeholder="DOMAIN\Administrator">
+        </div>
+        <div class="col-sm-6">
+          <label class="form-label" for="winrm_password">Password {% if endpoint is defined and endpoint.id %}<small class="text-muted">(leave blank to keep)</small>{% endif %}</label>
+          <input type="password" class="form-control" id="winrm_password" name="winrm_password">
+        </div>
+        <div class="col-sm-4">
+          <label class="form-label" for="winrm_port">WinRM Port</label>
+          <input type="number" class="form-control" id="winrm_port" name="winrm_port"
+                 value="{{ endpoint.winrm_port if endpoint is defined else 5985 }}" min="1" max="65535">
+        </div>
+        <div class="col-sm-4">
+          <label class="form-label" for="winrm_transport">Transport</label>
+          <select class="form-select" id="winrm_transport" name="winrm_transport">
+            {% for t in ['ntlm', 'basic', 'kerberos', 'ssl'] %}
+            <option value="{{ t }}" {% if (endpoint is defined and endpoint.winrm_transport == t) or (endpoint is not defined and t == 'ntlm') %}selected{% endif %}>{{ t.upper() }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label" for="notes">Notes</label>
+          <textarea class="form-control" id="notes" name="notes" rows="3">{{ endpoint.notes if endpoint is defined else '' }}</textarea>
+        </div>
+
+        <div class="col-12 d-flex gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save me-1"></i>{{ 'Save Changes' if endpoint is defined and endpoint.id else 'Add Endpoint' }}
+          </button>
+          <a href="{{ url_for('endpoints.index') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>

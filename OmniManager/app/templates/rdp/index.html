@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}RDP{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+<li class="breadcrumb-item active">RDP</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0"><i class="bi bi-display me-2"></i>Remote Desktop</h1>
+</div>
+
+<div class="row g-4">
+  <!-- Online Endpoints -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-circle-fill text-success me-1" style="font-size:.6rem"></i>Online Endpoints</h6>
+        <span class="badge bg-secondary">{{ endpoints|length }}</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+            <tr><th>Hostname</th><th>IP Address</th><th>OS</th><th>Last User</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for ep in endpoints %}
+            <tr>
+              <td class="fw-semibold">{{ ep.hostname }}</td>
+              <td><code>{{ ep.ip_address }}</code></td>
+              <td class="small text-muted text-truncate" style="max-width:140px">{{ ep.os_name or '—' }}</td>
+              <td class="small text-muted">{{ ep.last_user or '—' }}</td>
+              <td>
+                <button class="btn btn-sm btn-primary rdp-btn"
+                        data-endpoint-id="{{ ep.id }}"
+                        data-hostname="{{ ep.hostname }}"
+                        data-ip="{{ ep.ip_address }}"
+                        data-username="{{ ep.winrm_username or '' }}">
+                  <i class="bi bi-display me-1"></i>Connect
+                </button>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center text-muted py-4">
+                <i class="bi bi-pc-display fs-3 d-block mb-2"></i>
+                No online endpoints. Ping endpoints to update their status.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick connect + Custom -->
+  <div class="col-lg-5">
+    <div class="card mb-3">
+      <div class="card-header"><h6 class="mb-0"><i class="bi bi-keyboard me-1"></i>Custom Connect</h6></div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('rdp.launch_custom') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label" for="ip_address">IP Address or Hostname</label>
+            <input type="text" class="form-control" id="ip_address" name="ip_address" required placeholder="192.168.1.100">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label" for="rdp_port">RDP Port</label>
+              <input type="number" class="form-control" id="rdp_port" name="port" value="3389" min="1" max="65535">
+            </div>
+            <div class="col-6">
+              <label class="form-label" for="rdp_username">Username</label>
+              <input type="text" class="form-control" id="rdp_username" name="username" placeholder="Administrator">
+            </div>
+          </div>
+          <div class="form-check mb-3">
+            <input type="checkbox" class="form-check-input" id="fullscreen" name="fullscreen">
+            <label class="form-check-label" for="fullscreen">Full Screen</label>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-display me-1"></i>Launch mstsc
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0"><i class="bi bi-info-circle me-1"></i>Notes</h6></div>
+      <div class="card-body small text-muted">
+        <ul class="mb-0 ps-3">
+          <li>RDP launches <code>mstsc.exe</code> on the local Windows machine running OmniManager.</li>
+          <li>Ensure TCP port 3389 is open on the target endpoint.</li>
+          <li>Credentials are not forwarded — Windows Credential Manager will prompt if needed.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RDP Launch Modal -->
+<div class="modal fade" id="rdpModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-display me-1"></i>Connect via RDP</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" id="rdpForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-body">
+          <p class="mb-2">Connecting to: <strong id="rdpTarget"></strong></p>
+          <div class="mb-2">
+            <label class="form-label">Port</label>
+            <input type="number" class="form-control form-control-sm" name="port" value="3389" min="1" max="65535">
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-control form-control-sm" name="username" id="rdpUsername">
+          </div>
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="rdpFullscreen" name="fullscreen">
+            <label class="form-check-label" for="rdpFullscreen">Full Screen</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="bi bi-display me-1"></i>Launch
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const rdpModal = new bootstrap.Modal(document.getElementById('rdpModal'));
+document.querySelectorAll('.rdp-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const id = this.dataset.endpointId;
+    document.getElementById('rdpTarget').textContent = `${this.dataset.hostname} (${this.dataset.ip})`;
+    document.getElementById('rdpUsername').value = this.dataset.username;
+    document.getElementById('rdpForm').action = `/rdp/launch/${id}`;
+    rdpModal.show();
+  });
+});
+</script>
+{% endblock %}

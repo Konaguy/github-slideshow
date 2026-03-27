@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Endpoints{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+<li class="breadcrumb-item active">Endpoints</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0"><i class="bi bi-pc-display me-2"></i>Endpoints</h1>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('endpoints.import_csv') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-upload me-1"></i>Import CSV
+    </a>
+    <a href="{{ url_for('endpoints.new') }}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>Add Endpoint
+    </a>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="GET" class="row g-2 align-items-end">
+      <div class="col-sm-6 col-md-4">
+        <input type="search" class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="Search hostname, IP, domain…">
+      </div>
+      <div class="col-auto">
+        <select name="status" class="form-select form-select-sm">
+          <option value="">All Statuses</option>
+          <option value="online" {% if status_filter == 'online' %}selected{% endif %}>Online</option>
+          <option value="offline" {% if status_filter == 'offline' %}selected{% endif %}>Offline</option>
+          <option value="unknown" {% if status_filter == 'unknown' %}selected{% endif %}>Unknown</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-secondary">Filter</button>
+        <a href="{{ url_for('endpoints.index') }}" class="btn btn-sm btn-link">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Hostname</th>
+          <th>IP Address</th>
+          <th>Domain</th>
+          <th>OS</th>
+          <th>Status</th>
+          <th>Last Seen</th>
+          <th>Tags</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ep in endpoints.items %}
+        <tr>
+          <td>
+            <a href="{{ url_for('endpoints.detail', endpoint_id=ep.id) }}" class="fw-semibold text-decoration-none">
+              <i class="bi bi-pc-display me-1 text-muted"></i>{{ ep.hostname }}
+            </a>
+          </td>
+          <td><code>{{ ep.ip_address }}</code></td>
+          <td>{{ ep.domain or '—' }}</td>
+          <td class="text-truncate" style="max-width:180px">{{ ep.os_name or '—' }}</td>
+          <td>
+            <span class="badge bg-{{ ep.status_badge }}">
+              <i class="bi bi-circle-fill me-1" style="font-size:.5rem"></i>{{ ep.status }}
+            </span>
+          </td>
+          <td>{{ ep.last_seen.strftime('%Y-%m-%d %H:%M') if ep.last_seen else '—' }}</td>
+          <td>
+            {% for tag in ep.tag_list %}
+              <span class="badge bg-secondary me-1">{{ tag }}</span>
+            {% endfor %}
+          </td>
+          <td class="text-end">
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-secondary ping-btn" data-endpoint-id="{{ ep.id }}" title="Ping">
+                <i class="bi bi-wifi"></i>
+              </button>
+              <a href="{{ url_for('endpoints.detail', endpoint_id=ep.id) }}" class="btn btn-outline-secondary" title="Detail">
+                <i class="bi bi-info-circle"></i>
+              </a>
+              <a href="{{ url_for('endpoints.edit', endpoint_id=ep.id) }}" class="btn btn-outline-secondary" title="Edit">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <form method="POST" action="{{ url_for('endpoints.delete', endpoint_id=ep.id) }}" class="d-inline"
+                    onsubmit="return confirm('Delete {{ ep.hostname }}?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-outline-danger" title="Delete">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center text-muted py-5">
+            <i class="bi bi-pc-display fs-3 d-block mb-2"></i>
+            No endpoints found. <a href="{{ url_for('endpoints.new') }}">Add your first one</a>.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if endpoints.pages > 1 %}
+  <div class="card-footer">
+    <nav>
+      <ul class="pagination pagination-sm mb-0 justify-content-center">
+        {% for p in endpoints.iter_pages() %}
+          {% if p %}
+            <li class="page-item {% if p == endpoints.page %}active{% endif %}">
+              <a class="page-link" href="{{ url_for('endpoints.index', page=p, q=q, status=status_filter) }}">{{ p }}</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.ping-btn').forEach(btn => {
+  btn.addEventListener('click', async function() {
+    const id = this.dataset.endpointId;
+    this.disabled = true;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    try {
+      const resp = await fetch(`/endpoints/${id}/ping`, {method:'POST', headers:{'X-CSRFToken': getCsrfToken()}});
+      const data = await resp.json();
+      const badge = this.closest('tr').querySelector('.badge');
+      badge.className = `badge bg-${data.status === 'online' ? 'success' : 'danger'}`;
+      badge.innerHTML = `<i class="bi bi-circle-fill me-1" style="font-size:.5rem"></i>${data.status}`;
+    } finally {
+      this.disabled = false;
+      this.innerHTML = '<i class="bi bi-wifi"></i>';
+    }
+  });
+});
+</script>
+{% endblock %}

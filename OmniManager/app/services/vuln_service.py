@@ -1,0 +1,101 @@
+import json
+from datetime import datetime
+from app.extensions import db
+from app.models.vulnerability import VulnerabilityScanResult
+from app.services.winrm_service import WinRMService
+
+
+_SCAN_SCRIPT = """
+# Basic vulnerability checks via WMI/registry
+$vulns = @()
+
+# Check for missing critical patches (simplified)
+$session = New-Object -ComObject Microsoft.Update.Session
+$searcher = $session.CreateUpdateSearcher()
+$results = $searcher.Search("IsInstalled=0 and Type='Software' and BrowseOnly=0")
+foreach ($update in $results.Updates) {
+    if ($update.MsrcSeverity -in @('Critical','Important')) {
+        foreach ($kb in $update.KBArticleIDs) {
+            $vulns += [PSCustomObject]@{
+                CVEId             = "KB$kb"
+                Title             = $update.Title
+                Severity          = if ($update.MsrcSeverity) { $update.MsrcSeverity.ToLower() } else { 'info' }
+                CvssScore         = 0
+                AffectedComponent = 'Windows Update'
+                Remediation       = "Install KB$kb"
+            }
+        }
+    }
+}
+$vulns | ConvertTo-Json -Depth 3
+"""
+
+
+class VulnerabilityService:
+    def __init__(self, endpoint):
+        self.endpoint = endpoint
+        self.winrm = WinRMService(endpoint)
+
+    def scan(self, socketio=None, room=None):
+        """Scan the endpoint for known vulnerabilities."""
+        out, err, code = self.winrm.run_ps(_SCAN_SCRIPT)
+
+        if code != 0:
+            return [], err
+
+        try:
+            data = json.loads(out) if out.strip() else []
+        except json.JSONDecodeError as e:
+            return [], str(e)
+
+        if isinstance(data, dict):
+            data = [data]
+
+        # Remove previous open scan results
+        VulnerabilityScanResult.query.filter_by(
+            endpoint_id=self.endpoint.id, status="open"
+        ).delete()
+
+        results = []
+        for item in data:
+            cve_id = (item.get("CVEId") or "").strip()
+            if not cve_id:
+                continue
+
+            severity = (item.get("Severity") or "info").lower()
+            result = VulnerabilityScanResult(
+                endpoint_id=self.endpoint.id,
+                cve_id=cve_id,
+                title=item.get("Title", ""),
+                severity=severity,
+                cvss_score=float(item.get("CvssScore") or 0),
+                affected_component=item.get("AffectedComponent", ""),
+                remediation=item.get("Remediation", ""),
+                status="open",
+            )
+            db.session.add(result)
+            results.append(result)
+
+            if socketio and room:
+                socketio.emit("vuln_found", {"cve_id": cve_id, "severity": severity}, room=room)
+
+        db.session.commit()
+        return results, None
+
+    def update_status(self, vuln_id, new_status):
+        """Update the status of a vulnerability finding."""
+        vuln = VulnerabilityScanResult.query.get(vuln_id)
+        if not vuln or vuln.endpoint_id != self.endpoint.id:
+            return False, "Vulnerability not found"
+
+        allowed = {"open", "mitigated", "accepted", "false_positive"}
+        if new_status not in allowed:
+            return False, f"Invalid status. Must be one of: {', '.join(allowed)}"
+
+        vuln.status = new_status
+        if new_status in ("mitigated", "accepted", "false_positive"):
+            vuln.resolved_at = datetime.utcnow()
+        else:
+            vuln.resolved_at = None
+        db.session.commit()
+        return True, None

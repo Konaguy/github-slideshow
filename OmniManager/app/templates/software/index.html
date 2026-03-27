@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Software{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+<li class="breadcrumb-item active">Software</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0"><i class="bi bi-box-seam me-2"></i>Software Inventory</h1>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('software.catalog') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-collection me-1"></i>Catalog
+    </a>
+    {% if endpoint_id %}
+    <form method="POST" action="{{ url_for('software.scan', endpoint_id=endpoint_id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-primary btn-sm">
+        <i class="bi bi-arrow-repeat me-1"></i>Re-Scan
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="GET" class="row g-2 align-items-end">
+      <div class="col-sm-4">
+        <input type="search" class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="Search software name…">
+      </div>
+      <div class="col-auto">
+        <select name="endpoint_id" class="form-select form-select-sm">
+          <option value="">All Endpoints</option>
+          {% for ep in endpoints %}
+          <option value="{{ ep.id }}" {% if endpoint_id == ep.id %}selected{% endif %}>{{ ep.hostname }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-secondary">Filter</button>
+        <a href="{{ url_for('software.index') }}" class="btn btn-sm btn-link">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Publisher</th>
+          <th>Version</th>
+          <th>Endpoint</th>
+          <th>Install Date</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in results.items %}
+        <tr>
+          <td class="fw-semibold">{{ s.name }}</td>
+          <td class="text-muted small">{{ s.publisher or '—' }}</td>
+          <td><code class="small">{{ s.version or '—' }}</code></td>
+          <td>
+            <a href="{{ url_for('endpoints.detail', endpoint_id=s.endpoint.id) }}" class="text-decoration-none small">
+              {{ s.endpoint.hostname }}
+            </a>
+          </td>
+          <td class="small text-muted">{{ s.install_date or '—' }}</td>
+          <td><span class="badge bg-{{ s.status_badge }}">{{ s.status }}</span></td>
+          <td class="text-end">
+            {% if s.uninstall_string %}
+            <form method="POST" action="{{ url_for('software.uninstall', software_id=s.id) }}" class="d-inline"
+                  onsubmit="return confirm('Uninstall {{ s.name }}?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-trash me-1"></i>Uninstall
+              </button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-5">
+            <i class="bi bi-box-seam fs-3 d-block mb-2"></i>
+            No software data. Select an endpoint and run a scan.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if results.pages > 1 %}
+  <div class="card-footer">
+    <nav>
+      <ul class="pagination pagination-sm mb-0 justify-content-center">
+        {% for p in results.iter_pages() %}
+          {% if p %}
+            <li class="page-item {% if p == results.page %}active{% endif %}">
+              <a class="page-link" href="{{ url_for('software.index', page=p, q=q, endpoint_id=endpoint_id) }}">{{ p }}</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

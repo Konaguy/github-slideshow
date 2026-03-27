@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Import Endpoints{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('endpoints.index') }}">Endpoints</a></li>
+<li class="breadcrumb-item active">Import CSV</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0"><i class="bi bi-upload me-2"></i>Import Endpoints from CSV</h1>
+</div>
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-body">
+        <form method="POST" enctype="multipart/form-data" action="{{ url_for('endpoints.import_csv') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label" for="csv_file">CSV File</label>
+            <input type="file" class="form-control" id="csv_file" name="csv_file" accept=".csv" required>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Import</button>
+            <a href="{{ url_for('endpoints.index') }}" class="btn btn-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">CSV Format</h6></div>
+      <div class="card-body">
+        <p class="small text-muted mb-2">Required columns: <code>hostname</code>, <code>ip_address</code></p>
+        <p class="small text-muted mb-2">Optional: <code>domain</code>, <code>winrm_username</code>, <code>winrm_password</code>, <code>tags</code></p>
+        <pre class="bg-body-secondary rounded p-2 small">hostname,ip_address,domain,winrm_username,tags
+WS001,192.168.1.10,corp.local,CORP\admin,workstation
+SRV-DC1,192.168.1.1,corp.local,CORP\admin,server,dc</pre>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block title %}{{ endpoint.hostname }}{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('endpoints.index') }}">Endpoints</a></li>
+<li class="breadcrumb-item active">{{ endpoint.hostname }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <h1 class="h3 mb-1">
+      <i class="bi bi-pc-display me-2"></i>{{ endpoint.hostname }}
+      <span class="badge bg-{{ endpoint.status_badge }} ms-2 fs-6">{{ endpoint.status }}</span>
+    </h1>
+    <code class="text-muted">{{ endpoint.ip_address }}</code>
+    {% if endpoint.domain %}<span class="text-muted ms-2">| {{ endpoint.domain }}</span>{% endif %}
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('endpoints.edit', endpoint_id=endpoint.id) }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-pencil me-1"></i>Edit
+    </a>
+    <form method="POST" action="{{ url_for('endpoints.delete', endpoint_id=endpoint.id) }}"
+          onsubmit="return confirm('Delete {{ endpoint.hostname }}?')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-outline-danger btn-sm">
+        <i class="bi bi-trash me-1"></i>Delete
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- System Info -->
+  <div class="col-lg-5">
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-info-circle me-1"></i>System Info</h6>
+        <form method="POST" action="{{ url_for('endpoints.refresh', endpoint_id=endpoint.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+          </button>
+        </form>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-5">Hostname</dt><dd class="col-7">{{ endpoint.hostname }}</dd>
+          <dt class="col-5">IP Address</dt><dd class="col-7"><code>{{ endpoint.ip_address }}</code></dd>
+          <dt class="col-5">Domain</dt><dd class="col-7">{{ endpoint.domain or '—' }}</dd>
+          <dt class="col-5">OS</dt><dd class="col-7">{{ endpoint.os_name or '—' }}</dd>
+          <dt class="col-5">OS Version</dt><dd class="col-7">{{ endpoint.os_version or '—' }}</dd>
+          <dt class="col-5">Architecture</dt><dd class="col-7">{{ endpoint.architecture or '—' }}</dd>
+          <dt class="col-5">Last User</dt><dd class="col-7">{{ endpoint.last_user or '—' }}</dd>
+          <dt class="col-5">Last Seen</dt><dd class="col-7">{{ endpoint.last_seen.strftime('%Y-%m-%d %H:%M') if endpoint.last_seen else '—' }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    <!-- Tags & Notes -->
+    <div class="card mb-3">
+      <div class="card-header"><h6 class="mb-0">Tags &amp; Notes</h6></div>
+      <div class="card-body">
+        <div class="mb-2">
+          {% for tag in endpoint.tag_list %}
+            <span class="badge bg-secondary me-1">{{ tag }}</span>
+          {% else %}
+            <span class="text-muted small">No tags</span>
+          {% endfor %}
+        </div>
+        {% if endpoint.notes %}
+          <p class="mb-0 small text-muted">{{ endpoint.notes }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Quick actions -->
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">Actions</h6></div>
+      <div class="card-body d-flex flex-column gap-2">
+        <button class="btn btn-outline-secondary text-start btn-sm" id="pingBtn">
+          <i class="bi bi-wifi me-2"></i>Ping / Check Status
+        </button>
+        <form method="POST" action="{{ url_for('patches.scan', endpoint_id=endpoint.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-outline-warning text-start btn-sm w-100">
+            <i class="bi bi-patch-check me-2"></i>Scan for Missing Patches
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('software.scan', endpoint_id=endpoint.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-outline-info text-start btn-sm w-100">
+            <i class="bi bi-box-seam me-2"></i>Scan Software
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('vulnerabilities.scan', endpoint_id=endpoint.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-outline-danger text-start btn-sm w-100">
+            <i class="bi bi-shield-exclamation me-2"></i>Vulnerability Scan
+          </button>
+        </form>
+        <a href="{{ url_for('rdp.index') }}" class="btn btn-outline-primary text-start btn-sm">
+          <i class="bi bi-display me-2"></i>Connect via RDP
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="col-lg-7">
+    <ul class="nav nav-tabs mb-3" id="epTabs">
+      <li class="nav-item">
+        <a class="nav-link active" data-bs-toggle="tab" href="#tabPatches">
+          <i class="bi bi-patch-check me-1"></i>Patches
+          <span class="badge bg-warning ms-1">{{ endpoint.patch_scans.filter_by(status='missing').count() }}</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#tabSoftware">
+          <i class="bi bi-box-seam me-1"></i>Software
+          <span class="badge bg-secondary ms-1">{{ endpoint.software_scans.count() }}</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#tabVulns">
+          <i class="bi bi-shield-exclamation me-1"></i>Vulns
+          <span class="badge bg-danger ms-1">{{ endpoint.vuln_scans.filter_by(status='open').count() }}</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="tab-content">
+      <!-- Patches tab -->
+      <div class="tab-pane fade show active" id="tabPatches">
+        <div class="table-responsive" style="max-height:400px;overflow-y:auto">
+          <table class="table table-sm table-hover mb-0">
+            <thead class="sticky-top bg-body">
+              <tr><th>KB ID</th><th>Title</th><th>Severity</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              {% for p in endpoint.patch_scans.order_by('scanned_at desc').limit(50) %}
+              <tr>
+                <td><code>{{ p.kb_id }}</code></td>
+                <td class="text-truncate" style="max-width:200px" title="{{ p.title }}">{{ p.title }}</td>
+                <td><span class="badge bg-{{ p.severity_badge }}">{{ p.severity }}</span></td>
+                <td><span class="badge bg-{{ p.status_badge }}">{{ p.status }}</span></td>
+              </tr>
+              {% else %}
+              <tr><td colspan="4" class="text-center text-muted py-3">No patch data — run a scan.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="mt-2">
+          <a href="{{ url_for('patches.index', endpoint_id=endpoint.id) }}" class="btn btn-sm btn-link">View all patches</a>
+        </div>
+      </div>
+
+      <!-- Software tab -->
+      <div class="tab-pane fade" id="tabSoftware">
+        <div class="table-responsive" style="max-height:400px;overflow-y:auto">
+          <table class="table table-sm table-hover mb-0">
+            <thead class="sticky-top bg-body">
+              <tr><th>Name</th><th>Publisher</th><th>Version</th></tr>
+            </thead>
+            <tbody>
+              {% for s in endpoint.software_scans.order_by('name').limit(50) %}
+              <tr>
+                <td>{{ s.name }}</td>
+                <td class="text-muted small">{{ s.publisher or '—' }}</td>
+                <td><code class="small">{{ s.version or '—' }}</code></td>
+              </tr>
+              {% else %}
+              <tr><td colspan="3" class="text-center text-muted py-3">No software data — run a scan.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="mt-2">
+          <a href="{{ url_for('software.index', endpoint_id=endpoint.id) }}" class="btn btn-sm btn-link">View all software</a>
+        </div>
+      </div>
+
+      <!-- Vulnerabilities tab -->
+      <div class="tab-pane fade" id="tabVulns">
+        <div class="table-responsive" style="max-height:400px;overflow-y:auto">
+          <table class="table table-sm table-hover mb-0">
+            <thead class="sticky-top bg-body">
+              <tr><th>CVE / KB</th><th>Title</th><th>Severity</th><th>CVSS</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              {% for v in endpoint.vuln_scans.order_by('cvss_score desc').limit(50) %}
+              <tr>
+                <td><code>{{ v.cve_id }}</code></td>
+                <td class="text-truncate" style="max-width:160px" title="{{ v.title }}">{{ v.title }}</td>
+                <td><span class="badge bg-{{ v.severity_badge }}">{{ v.severity }}</span></td>
+                <td>{{ '%.1f'|format(v.cvss_score) if v.cvss_score else '—' }}</td>
+                <td><span class="badge bg-{{ v.status_badge }}">{{ v.status }}</span></td>
+              </tr>
+              {% else %}
+              <tr><td colspan="5" class="text-center text-muted py-3">No vulnerability data — run a scan.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="mt-2">
+          <a href="{{ url_for('vulnerabilities.index', endpoint_id=endpoint.id) }}" class="btn btn-sm btn-link">View all vulnerabilities</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('pingBtn').addEventListener('click', async function() {
+  this.disabled = true;
+  this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Pinging…';
+  try {
+    const resp = await fetch('{{ url_for("endpoints.ping", endpoint_id=endpoint.id) }}',
+      {method:'POST', headers:{'X-CSRFToken': getCsrfToken()}});
+    const data = await resp.json();
+    const cls = data.status === 'online' ? 'success' : 'danger';
+    showToast(`${data.status === 'online' ? '✓' : '✗'} ${data.status.toUpperCase()}`, cls);
+  } finally {
+    this.disabled = false;
+    this.innerHTML = '<i class="bi bi-wifi me-2"></i>Ping / Check Status';
+  }
+});
+</script>
+{% endblock %}
