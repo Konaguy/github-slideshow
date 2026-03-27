@@ -112,19 +112,19 @@
       <li class="nav-item">
         <a class="nav-link active" data-bs-toggle="tab" href="#tabPatches">
           <i class="bi bi-patch-check me-1"></i>Patches
-          <span class="badge bg-warning ms-1">{{ endpoint.patch_scans.filter_by(status='missing').count() }}</span>
+          <span class="badge bg-warning ms-1">{{ endpoint.missing_patch_count }}</span>
         </a>
       </li>
       <li class="nav-item">
         <a class="nav-link" data-bs-toggle="tab" href="#tabSoftware">
           <i class="bi bi-box-seam me-1"></i>Software
-          <span class="badge bg-secondary ms-1">{{ endpoint.software_scans.count() }}</span>
+          <span class="badge bg-secondary ms-1">{{ endpoint.software_count }}</span>
         </a>
       </li>
       <li class="nav-item">
         <a class="nav-link" data-bs-toggle="tab" href="#tabVulns">
           <i class="bi bi-shield-exclamation me-1"></i>Vulns
-          <span class="badge bg-danger ms-1">{{ endpoint.vuln_scans.filter_by(status='open').count() }}</span>
+          <span class="badge bg-danger ms-1">{{ endpoint.open_vuln_count }}</span>
         </a>
       </li>
     </ul>
@@ -138,7 +138,7 @@
               <tr><th>KB ID</th><th>Title</th><th>Severity</th><th>Status</th></tr>
             </thead>
             <tbody>
-              {% for p in endpoint.patch_scans.order_by('scanned_at desc').limit(50) %}
+              {% for p in recent_patches %}
               <tr>
                 <td><code>{{ p.kb_id }}</code></td>
                 <td class="text-truncate" style="max-width:200px" title="{{ p.title }}">{{ p.title }}</td>
@@ -164,7 +164,7 @@
               <tr><th>Name</th><th>Publisher</th><th>Version</th></tr>
             </thead>
             <tbody>
-              {% for s in endpoint.software_scans.order_by('name').limit(50) %}
+              {% for s in recent_software %}
               <tr>
                 <td>{{ s.name }}</td>
                 <td class="text-muted small">{{ s.publisher or '—' }}</td>
@@ -189,7 +189,7 @@
               <tr><th>CVE / KB</th><th>Title</th><th>Severity</th><th>CVSS</th><th>Status</th></tr>
             </thead>
             <tbody>
-              {% for v in endpoint.vuln_scans.order_by('cvss_score desc').limit(50) %}
+              {% for v in recent_vulns %}
               <tr>
                 <td><code>{{ v.cve_id }}</code></td>
                 <td class="text-truncate" style="max-width:160px" title="{{ v.title }}">{{ v.title }}</td>

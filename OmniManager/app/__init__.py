@@ -1,7 +1,7 @@
 import os
 from flask import Flask
 from config import config
-from app.extensions import db, login_manager, socketio, csrf
+from app.extensions import db, login_manager, socketio, csrf, migrate, limiter
 
 
 def create_app(config_name=None):
@@ -14,6 +14,8 @@ def create_app(config_name=None):
     # Initialize extensions
     db.init_app(app)
     csrf.init_app(app)
+    migrate.init_app(app, db)
+    limiter.init_app(app)
     socketio.init_app(app, async_mode=app.config["SOCKETIO_ASYNC_MODE"], cors_allowed_origins="*")
 
     login_manager.init_app(app)
@@ -24,7 +26,7 @@ def create_app(config_name=None):
     @login_manager.user_loader
     def load_user(user_id):
         from app.models.user import User
-        return User.query.get(int(user_id))
+        return db.session.get(User, int(user_id))
 
     # Register blueprints
     from app.blueprints.auth import auth_bp
@@ -53,7 +55,7 @@ def create_app(config_name=None):
         if room:
             join_room(room)
 
-    # Create tables
+    # Create tables (Flask-Migrate handles future schema changes)
     with app.app_context():
         db.create_all()
         _seed_admin_user()

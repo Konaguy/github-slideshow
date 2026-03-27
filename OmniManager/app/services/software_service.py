@@ -35,7 +35,7 @@ class SoftwareService:
         self.winrm = WinRMService(endpoint)
 
     def scan(self, socketio=None, room=None):
-        """Enumerate installed software on the endpoint."""
+        """Enumerate installed software on the endpoint. Returns (results, error)."""
         out, err, code = self.winrm.run_ps(_SCAN_SCRIPT)
 
         if code != 0:
@@ -49,7 +49,6 @@ class SoftwareService:
         if isinstance(data, dict):
             data = [data]
 
-        # Clear previous scan results
         SoftwareScanResult.query.filter_by(endpoint_id=self.endpoint.id).delete()
 
         results = []
@@ -70,14 +69,14 @@ class SoftwareService:
             results.append(result)
 
             if socketio and room:
-                socketio.emit("software_found", {"name": name}, room=room)
+                socketio.emit("software_found", {"name": name}, to=room)
 
         db.session.commit()
         return results, None
 
     def uninstall(self, software_id, socketio=None, room=None):
-        """Uninstall software using its stored uninstall string."""
-        sw = SoftwareScanResult.query.get(software_id)
+        """Uninstall software using its stored uninstall string. Returns (success, error)."""
+        sw = db.session.get(SoftwareScanResult, software_id)
         if not sw or sw.endpoint_id != self.endpoint.id:
             return False, "Software record not found"
 
@@ -88,10 +87,13 @@ class SoftwareService:
         db.session.commit()
 
         if socketio and room:
-            socketio.emit("sw_uninstalling", {"name": sw.name}, room=room)
+            socketio.emit("sw_uninstalling", {"name": sw.name}, to=room)
 
-        # Run silent uninstall
-        script = f'Start-Process -FilePath "cmd.exe" -ArgumentList "/c {sw.uninstall_string} /S /silent /quiet" -Wait -PassThru | Select-Object -ExpandProperty ExitCode'
+        script = (
+            f'Start-Process -FilePath "cmd.exe" '
+            f'-ArgumentList "/c {sw.uninstall_string} /S /silent /quiet" '
+            f'-Wait -PassThru | Select-Object -ExpandProperty ExitCode'
+        )
         out, err, code = self.winrm.run_ps(script)
 
         success = code == 0
@@ -104,20 +106,24 @@ class SoftwareService:
 
         if socketio and room:
             event = "sw_uninstalled" if success else "sw_uninstall_failed"
-            socketio.emit(event, {"name": sw.name, "error": err}, room=room)
+            socketio.emit(event, {"name": sw.name, "error": err}, to=room)
 
         return success, err
 
     def remote_install(self, install_command, name, socketio=None, room=None):
-        """Run an arbitrary install command on the endpoint."""
+        """Run an arbitrary install command on the endpoint. Returns (success, error)."""
         if socketio and room:
-            socketio.emit("sw_installing", {"name": name}, room=room)
+            socketio.emit("sw_installing", {"name": name}, to=room)
 
-        script = f'Start-Process -FilePath "cmd.exe" -ArgumentList "/c {install_command}" -Wait -PassThru | Select-Object -ExpandProperty ExitCode'
+        script = (
+            f'Start-Process -FilePath "cmd.exe" '
+            f'-ArgumentList "/c {install_command}" '
+            f'-Wait -PassThru | Select-Object -ExpandProperty ExitCode'
+        )
         out, err, code = self.winrm.run_ps(script)
 
         if socketio and room:
             event = "sw_installed" if code == 0 else "sw_install_failed"
-            socketio.emit(event, {"name": name, "error": err}, room=room)
+            socketio.emit(event, {"name": name, "error": err}, to=room)
 
         return code == 0, err

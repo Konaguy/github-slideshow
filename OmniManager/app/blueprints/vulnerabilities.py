@@ -44,7 +44,7 @@ def index():
 @vulnerabilities_bp.route("/scan/<int:endpoint_id>", methods=["POST"])
 @login_required
 def scan(endpoint_id):
-    ep = Endpoint.query.get_or_404(endpoint_id)
+    ep = db.get_or_404(Endpoint, endpoint_id)
     room = f"vuln_scan_{ep.id}"
 
     from flask import current_app
@@ -55,12 +55,11 @@ def scan(endpoint_id):
             svc = VulnerabilityService(ep)
             results, err = svc.scan(socketio=socketio, room=room)
             if err:
-                socketio.emit("vuln_scan_error", {"error": err}, room=room)
+                socketio.emit("vuln_scan_error", {"error": err}, to=room)
             else:
-                socketio.emit("vuln_scan_complete", {"count": len(results)}, room=room)
+                socketio.emit("vuln_scan_complete", {"count": len(results)}, to=room)
 
-    thread = threading.Thread(target=_run, daemon=True)
-    thread.start()
+    threading.Thread(target=_run, daemon=True).start()
     flash(f"Vulnerability scan started for {ep.hostname}.", "info")
     return redirect(url_for("vulnerabilities.index", endpoint_id=endpoint_id))
 
@@ -68,8 +67,8 @@ def scan(endpoint_id):
 @vulnerabilities_bp.route("/<int:vuln_id>/status", methods=["POST"])
 @login_required
 def update_status(vuln_id):
-    vuln = VulnerabilityScanResult.query.get_or_404(vuln_id)
-    ep = Endpoint.query.get_or_404(vuln.endpoint_id)
+    vuln = db.get_or_404(VulnerabilityScanResult, vuln_id)
+    ep = db.get_or_404(Endpoint, vuln.endpoint_id)
     new_status = request.form.get("status", "").strip()
 
     svc = VulnerabilityService(ep)
@@ -85,8 +84,8 @@ def update_status(vuln_id):
 @vulnerabilities_bp.route("/<int:vuln_id>")
 @login_required
 def detail(vuln_id):
-    vuln = VulnerabilityScanResult.query.get_or_404(vuln_id)
-    ep = Endpoint.query.get_or_404(vuln.endpoint_id)
+    vuln = db.get_or_404(VulnerabilityScanResult, vuln_id)
+    ep = db.get_or_404(Endpoint, vuln.endpoint_id)
     return render_template("vulnerabilities/detail.html", vuln=vuln, endpoint=ep)
 
 

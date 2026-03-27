@@ -1,7 +1,9 @@
 import subprocess
 import sys
+import socket
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required
+from app.extensions import db
 from app.models.endpoint import Endpoint
 
 rdp_bp = Blueprint("rdp", __name__)
@@ -12,9 +14,7 @@ def _launch_mstsc(ip_address, port=3389, username=None, fullscreen=False):
     if sys.platform != "win32":
         return False, "RDP launch requires Windows (mstsc.exe)"
 
-    args = ["mstsc"]
-    rdp_str = f"/v:{ip_address}:{port}"
-    args.append(rdp_str)
+    args = ["mstsc", f"/v:{ip_address}:{port}"]
     if fullscreen:
         args.append("/f")
     if username:
@@ -40,7 +40,7 @@ def index():
 @rdp_bp.route("/launch/<int:endpoint_id>", methods=["POST"])
 @login_required
 def launch(endpoint_id):
-    ep = Endpoint.query.get_or_404(endpoint_id)
+    ep = db.get_or_404(Endpoint, endpoint_id)
     port = request.form.get("port", 3389, type=int)
     fullscreen = bool(request.form.get("fullscreen"))
     username = request.form.get("username", ep.winrm_username or "").strip()
@@ -78,9 +78,8 @@ def launch_custom():
 @rdp_bp.route("/status/<int:endpoint_id>")
 @login_required
 def status(endpoint_id):
-    ep = Endpoint.query.get_or_404(endpoint_id)
-    import socket
-    port = request.args.get("port", ep.winrm_port or 3389, type=int)
+    ep = db.get_or_404(Endpoint, endpoint_id)
+    port = request.args.get("port", 3389, type=int)
     try:
         with socket.create_connection((ep.ip_address, port), timeout=3):
             reachable = True

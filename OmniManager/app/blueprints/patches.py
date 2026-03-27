@@ -42,7 +42,7 @@ def index():
 @patches_bp.route("/scan/<int:endpoint_id>", methods=["POST"])
 @login_required
 def scan(endpoint_id):
-    ep = Endpoint.query.get_or_404(endpoint_id)
+    ep = db.get_or_404(Endpoint, endpoint_id)
     room = f"patch_scan_{ep.id}"
 
     from flask import current_app
@@ -53,13 +53,11 @@ def scan(endpoint_id):
             svc = PatchService(ep)
             results, err = svc.scan(socketio=socketio, room=room)
             if err:
-                socketio.emit("scan_error", {"error": err}, room=room)
+                socketio.emit("scan_error", {"error": err}, to=room)
             else:
-                socketio.emit("scan_complete", {"count": len(results)}, room=room)
+                socketio.emit("scan_complete", {"count": len(results)}, to=room)
 
-    thread = threading.Thread(target=_run, daemon=True)
-    thread.start()
-
+    threading.Thread(target=_run, daemon=True).start()
     flash(f"Patch scan started for {ep.hostname}. Watch the live feed.", "info")
     return redirect(url_for("patches.scan_status", endpoint_id=ep.id))
 
@@ -67,7 +65,7 @@ def scan(endpoint_id):
 @patches_bp.route("/scan/<int:endpoint_id>/status")
 @login_required
 def scan_status(endpoint_id):
-    ep = Endpoint.query.get_or_404(endpoint_id)
+    ep = db.get_or_404(Endpoint, endpoint_id)
     return render_template("patches/scan_status.html", endpoint=ep)
 
 
@@ -81,7 +79,7 @@ def install():
         flash("Endpoint and KB ID are required.", "danger")
         return redirect(url_for("patches.index"))
 
-    ep = Endpoint.query.get_or_404(endpoint_id)
+    ep = db.get_or_404(Endpoint, endpoint_id)
     room = f"patch_install_{ep.id}"
 
     from flask import current_app
@@ -92,11 +90,9 @@ def install():
             svc = PatchService(ep)
             success, err = svc.install(kb_id, socketio=socketio, room=room)
             if not success:
-                socketio.emit("install_error", {"kb_id": kb_id, "error": err}, room=room)
+                socketio.emit("install_error", {"kb_id": kb_id, "error": err}, to=room)
 
-    thread = threading.Thread(target=_run, daemon=True)
-    thread.start()
-
+    threading.Thread(target=_run, daemon=True).start()
     flash(f"Installing KB{kb_id} on {ep.hostname}…", "info")
     return redirect(url_for("patches.index", endpoint_id=endpoint_id))
 
@@ -105,7 +101,7 @@ def install():
 @login_required
 def install_all():
     endpoint_id = request.form.get("endpoint_id", type=int)
-    ep = Endpoint.query.get_or_404(endpoint_id)
+    ep = db.get_or_404(Endpoint, endpoint_id)
     missing = PatchScanResult.query.filter_by(endpoint_id=ep.id, status="missing").all()
     room = f"patch_install_all_{ep.id}"
 
@@ -118,8 +114,7 @@ def install_all():
             for pr in missing:
                 svc.install(pr.kb_id, socketio=socketio, room=room)
 
-    thread = threading.Thread(target=_run, daemon=True)
-    thread.start()
+    threading.Thread(target=_run, daemon=True).start()
     flash(f"Installing {len(missing)} patches on {ep.hostname}…", "info")
     return redirect(url_for("patches.index", endpoint_id=endpoint_id))
 
@@ -127,7 +122,7 @@ def install_all():
 @patches_bp.route("/dismiss/<int:result_id>", methods=["POST"])
 @login_required
 def dismiss(result_id):
-    result = PatchScanResult.query.get_or_404(result_id)
+    result = db.get_or_404(PatchScanResult, result_id)
     db.session.delete(result)
     db.session.commit()
     return jsonify({"ok": True})

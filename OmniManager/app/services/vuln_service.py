@@ -6,10 +6,7 @@ from app.services.winrm_service import WinRMService
 
 
 _SCAN_SCRIPT = """
-# Basic vulnerability checks via WMI/registry
 $vulns = @()
-
-# Check for missing critical patches (simplified)
 $session = New-Object -ComObject Microsoft.Update.Session
 $searcher = $session.CreateUpdateSearcher()
 $results = $searcher.Search("IsInstalled=0 and Type='Software' and BrowseOnly=0")
@@ -37,7 +34,7 @@ class VulnerabilityService:
         self.winrm = WinRMService(endpoint)
 
     def scan(self, socketio=None, room=None):
-        """Scan the endpoint for known vulnerabilities."""
+        """Scan the endpoint for known vulnerabilities. Returns (results, error)."""
         out, err, code = self.winrm.run_ps(_SCAN_SCRIPT)
 
         if code != 0:
@@ -51,7 +48,6 @@ class VulnerabilityService:
         if isinstance(data, dict):
             data = [data]
 
-        # Remove previous open scan results
         VulnerabilityScanResult.query.filter_by(
             endpoint_id=self.endpoint.id, status="open"
         ).delete()
@@ -77,14 +73,14 @@ class VulnerabilityService:
             results.append(result)
 
             if socketio and room:
-                socketio.emit("vuln_found", {"cve_id": cve_id, "severity": severity}, room=room)
+                socketio.emit("vuln_found", {"cve_id": cve_id, "severity": severity}, to=room)
 
         db.session.commit()
         return results, None
 
     def update_status(self, vuln_id, new_status):
-        """Update the status of a vulnerability finding."""
-        vuln = VulnerabilityScanResult.query.get(vuln_id)
+        """Update the status of a vulnerability finding. Returns (success, error)."""
+        vuln = db.session.get(VulnerabilityScanResult, vuln_id)
         if not vuln or vuln.endpoint_id != self.endpoint.id:
             return False, "Vulnerability not found"
 

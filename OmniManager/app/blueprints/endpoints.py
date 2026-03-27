@@ -1,7 +1,12 @@
+from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required
+from sqlalchemy import select
 from app.extensions import db
 from app.models.endpoint import Endpoint
+from app.models.patch import PatchScanResult
+from app.models.software import SoftwareScanResult
+from app.models.vulnerability import VulnerabilityScanResult
 from app.services.winrm_service import WinRMService
 
 endpoints_bp = Blueprint("endpoints", __name__)
@@ -62,14 +67,42 @@ def new():
 @endpoints_bp.route("/<int:endpoint_id>")
 @login_required
 def detail(endpoint_id):
-    ep = Endpoint.query.get_or_404(endpoint_id)
-    return render_template("endpoints/detail.html", endpoint=ep)
+    ep = db.get_or_404(Endpoint, endpoint_id)
+
+    recent_patches = db.session.scalars(
+        select(PatchScanResult)
+        .where(PatchScanResult.endpoint_id == ep.id)
+        .order_by(PatchScanResult.scanned_at.desc())
+        .limit(50)
+    ).all()
+
+    recent_software = db.session.scalars(
+        select(SoftwareScanResult)
+        .where(SoftwareScanResult.endpoint_id == ep.id)
+        .order_by(SoftwareScanResult.name)
+        .limit(50)
+    ).all()
+
+    recent_vulns = db.session.scalars(
+        select(VulnerabilityScanResult)
+        .where(VulnerabilityScanResult.endpoint_id == ep.id)
+        .order_by(VulnerabilityScanResult.cvss_score.desc())
+        .limit(50)
+    ).all()
+
+    return render_template(
+        "endpoints/detail.html",
+        endpoint=ep,
+        recent_patches=recent_patches,
+        recent_software=recent_software,
+        recent_vulns=recent_vulns,
+    )
 
 
 @endpoints_bp.route("/<int:endpoint_id>/edit", methods=["GET", "POST"])
 @login_required
 def edit(endpoint_id):
-    ep = Endpoint.query.get_or_404(endpoint_id)
+    ep = db.get_or_404(Endpoint, endpoint_id)
 
     if request.method == "POST":
         ep.hostname = request.form.get("hostname", ep.hostname).strip()
@@ -93,7 +126,7 @@ def edit(endpoint_id):
 @endpoints_bp.route("/<int:endpoint_id>/delete", methods=["POST"])
 @login_required
 def delete(endpoint_id):
-    ep = Endpoint.query.get_or_404(endpoint_id)
+    ep = db.get_or_404(Endpoint, endpoint_id)
     name = ep.hostname
     db.session.delete(ep)
     db.session.commit()
@@ -104,10 +137,9 @@ def delete(endpoint_id):
 @endpoints_bp.route("/<int:endpoint_id>/ping", methods=["POST"])
 @login_required
 def ping(endpoint_id):
-    ep = Endpoint.query.get_or_404(endpoint_id)
+    ep = db.get_or_404(Endpoint, endpoint_id)
     svc = WinRMService(ep)
     reachable = svc.ping()
-    from datetime import datetime
     ep.status = "online" if reachable else "offline"
     ep.last_ping = datetime.utcnow()
     db.session.commit()
@@ -117,13 +149,12 @@ def ping(endpoint_id):
 @endpoints_bp.route("/<int:endpoint_id>/refresh", methods=["POST"])
 @login_required
 def refresh(endpoint_id):
-    ep = Endpoint.query.get_or_404(endpoint_id)
+    ep = db.get_or_404(Endpoint, endpoint_id)
     svc = WinRMService(ep)
     info, err = svc.get_system_info()
     if err:
         return jsonify({"error": err}), 400
 
-    from datetime import datetime
     ep.os_name = info.get("OSName", ep.os_name)
     ep.os_version = info.get("OSVersion", ep.os_version)
     ep.architecture = info.get("Architecture", ep.architecture)

@@ -1,13 +1,14 @@
 from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
-from app.extensions import db
+from app.extensions import db, limiter
 from app.models.user import User
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
+@limiter.limit("20 per minute")
 def login():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard.index"))
@@ -114,7 +115,7 @@ def delete_user(user_id):
         flash("Admin access required.", "danger")
         return redirect(url_for("dashboard.index"))
 
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     if user.id == current_user.id:
         flash("You cannot delete your own account.", "danger")
         return redirect(url_for("auth.users"))

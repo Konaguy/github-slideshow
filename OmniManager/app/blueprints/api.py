@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from flask_login import login_required, current_user
+from flask_login import login_required
 from app.extensions import db
 from app.models.endpoint import Endpoint
 from app.models.patch import PatchScanResult
@@ -73,14 +73,14 @@ def list_endpoints():
 @api_bp.route("/endpoints/<int:endpoint_id>")
 @login_required
 def get_endpoint(endpoint_id):
-    ep = Endpoint.query.get_or_404(endpoint_id)
+    ep = db.get_or_404(Endpoint, endpoint_id)
     return jsonify(_endpoint_dict(ep))
 
 
 @api_bp.route("/endpoints/<int:endpoint_id>/patches")
 @login_required
 def endpoint_patches(endpoint_id):
-    Endpoint.query.get_or_404(endpoint_id)
+    db.get_or_404(Endpoint, endpoint_id)
     patches = PatchScanResult.query.filter_by(endpoint_id=endpoint_id).all()
     return jsonify([_patch_dict(p) for p in patches])
 
@@ -88,7 +88,7 @@ def endpoint_patches(endpoint_id):
 @api_bp.route("/endpoints/<int:endpoint_id>/software")
 @login_required
 def endpoint_software(endpoint_id):
-    Endpoint.query.get_or_404(endpoint_id)
+    db.get_or_404(Endpoint, endpoint_id)
     software = SoftwareScanResult.query.filter_by(endpoint_id=endpoint_id).all()
     return jsonify([_sw_dict(s) for s in software])
 
@@ -96,7 +96,7 @@ def endpoint_software(endpoint_id):
 @api_bp.route("/endpoints/<int:endpoint_id>/vulnerabilities")
 @login_required
 def endpoint_vulnerabilities(endpoint_id):
-    Endpoint.query.get_or_404(endpoint_id)
+    db.get_or_404(Endpoint, endpoint_id)
     vulns = VulnerabilityScanResult.query.filter_by(endpoint_id=endpoint_id).all()
     return jsonify([_vuln_dict(v) for v in vulns])
 
@@ -136,7 +136,7 @@ def scan_patches():
     if not endpoint_id:
         return jsonify({"error": "endpoint_id required"}), 400
 
-    ep = Endpoint.query.get_or_404(endpoint_id)
+    ep = db.get_or_404(Endpoint, endpoint_id)
     from app.services.patch_service import PatchService
     svc = PatchService(ep)
     results, err = svc.scan()
@@ -154,7 +154,7 @@ def install_patch():
     if not endpoint_id or not kb_id:
         return jsonify({"error": "endpoint_id and kb_id required"}), 400
 
-    ep = Endpoint.query.get_or_404(endpoint_id)
+    ep = db.get_or_404(Endpoint, endpoint_id)
     from app.services.patch_service import PatchService
     svc = PatchService(ep)
     success, err = svc.install(kb_id)

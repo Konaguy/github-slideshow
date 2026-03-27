@@ -45,7 +45,7 @@ class PatchService:
         self.winrm = WinRMService(endpoint)
 
     def scan(self, socketio=None, room=None):
-        """Scan endpoint for missing patches. Returns list of PatchScanResult objects."""
+        """Scan endpoint for missing patches. Returns (results, error)."""
         out, err, code = self.winrm.run_ps(_SCAN_SCRIPT)
 
         if code != 0:
@@ -86,13 +86,13 @@ class PatchService:
                 results.append(result)
 
             if socketio and room:
-                socketio.emit("patch_found", {"kb_id": kb_id, "title": item.get("Title", "")}, room=room)
+                socketio.emit("patch_found", {"kb_id": kb_id, "title": item.get("Title", "")}, to=room)
 
         db.session.commit()
         return results, None
 
     def install(self, kb_id, socketio=None, room=None):
-        """Install a specific patch by KB ID."""
+        """Install a specific patch by KB ID. Returns (success, error)."""
         scan_result = PatchScanResult.query.filter_by(
             endpoint_id=self.endpoint.id, kb_id=kb_id
         ).first()
@@ -101,7 +101,7 @@ class PatchService:
             db.session.commit()
 
         if socketio and room:
-            socketio.emit("patch_installing", {"kb_id": kb_id}, room=room)
+            socketio.emit("patch_installing", {"kb_id": kb_id}, to=room)
 
         out, err, code = self.winrm.run_ps(f'$KBId = "{kb_id}"\n{_INSTALL_SCRIPT}')
 
@@ -116,6 +116,6 @@ class PatchService:
 
         if socketio and room:
             event = "patch_installed" if code == 0 else "patch_failed"
-            socketio.emit(event, {"kb_id": kb_id, "error": err}, room=room)
+            socketio.emit(event, {"kb_id": kb_id, "error": err}, to=room)
 
         return code == 0, err
