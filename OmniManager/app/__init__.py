@@ -45,6 +45,14 @@ def create_app(config_name=None):
     app.register_blueprint(rdp_bp, url_prefix="/rdp")
     app.register_blueprint(api_bp, url_prefix="/api/v1")
 
+    # SocketIO room management
+    @socketio.on("join")
+    def on_join(data):
+        from flask_socketio import join_room
+        room = data.get("room")
+        if room:
+            join_room(room)
+
     # Create tables
     with app.app_context():
         db.create_all()

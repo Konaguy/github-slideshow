@@ -79,9 +79,11 @@ def scan(endpoint_id):
     ep = Endpoint.query.get_or_404(endpoint_id)
     room = f"sw_scan_{ep.id}"
 
+    from flask import current_app
+    app = current_app._get_current_object()
+
     def _run():
-        from flask import current_app
-        with current_app.app_context():
+        with app.app_context():
             svc = SoftwareService(ep)
             results, err = svc.scan(socketio=socketio, room=room)
             if err:
@@ -102,9 +104,11 @@ def uninstall(software_id):
     ep = Endpoint.query.get_or_404(sw.endpoint_id)
     room = f"sw_uninstall_{ep.id}"
 
+    from flask import current_app
+    app = current_app._get_current_object()
+
     def _run():
-        from flask import current_app
-        with current_app.app_context():
+        with app.app_context():
             svc = SoftwareService(ep)
             success, err = svc.uninstall(software_id, socketio=socketio, room=room)
 
@@ -124,9 +128,11 @@ def install():
     sw = Software.query.get_or_404(catalog_id)
     room = f"sw_install_{ep.id}"
 
+    from flask import current_app
+    app = current_app._get_current_object()
+
     def _run():
-        from flask import current_app
-        with current_app.app_context():
+        with app.app_context():
             svc = SoftwareService(ep)
             svc.remote_install(sw.install_command, sw.name, socketio=socketio, room=room)
 

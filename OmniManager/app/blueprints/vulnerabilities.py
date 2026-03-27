@@ -47,9 +47,11 @@ def scan(endpoint_id):
     ep = Endpoint.query.get_or_404(endpoint_id)
     room = f"vuln_scan_{ep.id}"
 
+    from flask import current_app
+    app = current_app._get_current_object()
+
     def _run():
-        from flask import current_app
-        with current_app.app_context():
+        with app.app_context():
             svc = VulnerabilityService(ep)
             results, err = svc.scan(socketio=socketio, room=room)
             if err:

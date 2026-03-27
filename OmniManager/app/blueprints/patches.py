@@ -45,18 +45,17 @@ def scan(endpoint_id):
     ep = Endpoint.query.get_or_404(endpoint_id)
     room = f"patch_scan_{ep.id}"
 
+    from flask import current_app
+    app = current_app._get_current_object()
+
     def _run():
-        with patches_bp.open_resource.__self__.app_context() if False else _app_context():
+        with app.app_context():
             svc = PatchService(ep)
             results, err = svc.scan(socketio=socketio, room=room)
             if err:
                 socketio.emit("scan_error", {"error": err}, room=room)
             else:
                 socketio.emit("scan_complete", {"count": len(results)}, room=room)
-
-    def _app_context():
-        from flask import current_app
-        return current_app.app_context()
 
     thread = threading.Thread(target=_run, daemon=True)
     thread.start()
@@ -85,9 +84,11 @@ def install():
     ep = Endpoint.query.get_or_404(endpoint_id)
     room = f"patch_install_{ep.id}"
 
+    from flask import current_app
+    app = current_app._get_current_object()
+
     def _run():
-        from flask import current_app
-        with current_app.app_context():
+        with app.app_context():
             svc = PatchService(ep)
             success, err = svc.install(kb_id, socketio=socketio, room=room)
             if not success:
@@ -108,9 +109,11 @@ def install_all():
     missing = PatchScanResult.query.filter_by(endpoint_id=ep.id, status="missing").all()
     room = f"patch_install_all_{ep.id}"
 
+    from flask import current_app
+    app = current_app._get_current_object()
+
     def _run():
-        from flask import current_app
-        with current_app.app_context():
+        with app.app_context():
             svc = PatchService(ep)
             for pr in missing:
                 svc.install(pr.kb_id, socketio=socketio, room=room)
