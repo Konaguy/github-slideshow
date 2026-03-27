@@ -44,13 +44,16 @@ def index():
 def scan(endpoint_id):
     ep = db.get_or_404(Endpoint, endpoint_id)
     room = f"patch_scan_{ep.id}"
+    ep_id = ep.id
+    ep_hostname = ep.hostname
 
     from flask import current_app
     app = current_app._get_current_object()
 
     def _run():
         with app.app_context():
-            svc = PatchService(ep)
+            ep_fresh = db.session.get(Endpoint, ep_id)
+            svc = PatchService(ep_fresh)
             results, err = svc.scan(socketio=socketio, room=room)
             if err:
                 socketio.emit("scan_error", {"error": err}, to=room)
@@ -58,8 +61,8 @@ def scan(endpoint_id):
                 socketio.emit("scan_complete", {"count": len(results)}, to=room)
 
     threading.Thread(target=_run, daemon=True).start()
-    flash(f"Patch scan started for {ep.hostname}. Watch the live feed.", "info")
-    return redirect(url_for("patches.scan_status", endpoint_id=ep.id))
+    flash(f"Patch scan started for {ep_hostname}. Watch the live feed.", "info")
+    return redirect(url_for("patches.scan_status", endpoint_id=ep_id))
 
 
 @patches_bp.route("/scan/<int:endpoint_id>/status")
@@ -81,19 +84,22 @@ def install():
 
     ep = db.get_or_404(Endpoint, endpoint_id)
     room = f"patch_install_{ep.id}"
+    ep_id = ep.id
+    ep_hostname = ep.hostname
 
     from flask import current_app
     app = current_app._get_current_object()
 
     def _run():
         with app.app_context():
-            svc = PatchService(ep)
+            ep_fresh = db.session.get(Endpoint, ep_id)
+            svc = PatchService(ep_fresh)
             success, err = svc.install(kb_id, socketio=socketio, room=room)
             if not success:
                 socketio.emit("install_error", {"kb_id": kb_id, "error": err}, to=room)
 
     threading.Thread(target=_run, daemon=True).start()
-    flash(f"Installing KB{kb_id} on {ep.hostname}…", "info")
+    flash(f"Installing KB{kb_id} on {ep_hostname}…", "info")
     return redirect(url_for("patches.index", endpoint_id=endpoint_id))
 
 
@@ -102,20 +108,26 @@ def install():
 def install_all():
     endpoint_id = request.form.get("endpoint_id", type=int)
     ep = db.get_or_404(Endpoint, endpoint_id)
-    missing = PatchScanResult.query.filter_by(endpoint_id=ep.id, status="missing").all()
+    missing_kb_ids = [
+        pr.kb_id for pr in
+        PatchScanResult.query.filter_by(endpoint_id=ep.id, status="missing").all()
+    ]
     room = f"patch_install_all_{ep.id}"
+    ep_id = ep.id
+    ep_hostname = ep.hostname
 
     from flask import current_app
     app = current_app._get_current_object()
 
     def _run():
         with app.app_context():
-            svc = PatchService(ep)
-            for pr in missing:
-                svc.install(pr.kb_id, socketio=socketio, room=room)
+            ep_fresh = db.session.get(Endpoint, ep_id)
+            svc = PatchService(ep_fresh)
+            for kb_id in missing_kb_ids:
+                svc.install(kb_id, socketio=socketio, room=room)
 
     threading.Thread(target=_run, daemon=True).start()
-    flash(f"Installing {len(missing)} patches on {ep.hostname}…", "info")
+    flash(f"Installing {len(missing_kb_ids)} patches on {ep_hostname}…", "info")
     return redirect(url_for("patches.index", endpoint_id=endpoint_id))
 
 

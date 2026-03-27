@@ -78,13 +78,16 @@ def add_catalog():
 def scan(endpoint_id):
     ep = db.get_or_404(Endpoint, endpoint_id)
     room = f"sw_scan_{ep.id}"
+    ep_id = ep.id
+    ep_hostname = ep.hostname
 
     from flask import current_app
     app = current_app._get_current_object()
 
     def _run():
         with app.app_context():
-            svc = SoftwareService(ep)
+            ep_fresh = db.session.get(Endpoint, ep_id)
+            svc = SoftwareService(ep_fresh)
             results, err = svc.scan(socketio=socketio, room=room)
             if err:
                 socketio.emit("sw_scan_error", {"error": err}, to=room)
@@ -92,7 +95,7 @@ def scan(endpoint_id):
                 socketio.emit("sw_scan_complete", {"count": len(results)}, to=room)
 
     threading.Thread(target=_run, daemon=True).start()
-    flash(f"Software scan started for {ep.hostname}.", "info")
+    flash(f"Software scan started for {ep_hostname}.", "info")
     return redirect(url_for("software.index", endpoint_id=endpoint_id))
 
 
@@ -100,20 +103,22 @@ def scan(endpoint_id):
 @login_required
 def uninstall(software_id):
     sw = db.get_or_404(SoftwareScanResult, software_id)
-    ep = db.get_or_404(Endpoint, sw.endpoint_id)
-    room = f"sw_uninstall_{ep.id}"
+    ep_id = sw.endpoint_id
+    sw_name = sw.name
+    room = f"sw_uninstall_{ep_id}"
 
     from flask import current_app
     app = current_app._get_current_object()
 
     def _run():
         with app.app_context():
-            svc = SoftwareService(ep)
+            ep_fresh = db.session.get(Endpoint, ep_id)
+            svc = SoftwareService(ep_fresh)
             svc.uninstall(software_id, socketio=socketio, room=room)
 
     threading.Thread(target=_run, daemon=True).start()
-    flash(f"Uninstall of '{sw.name}' started.", "info")
-    return redirect(url_for("software.index", endpoint_id=ep.id))
+    flash(f"Uninstall of '{sw_name}' started.", "info")
+    return redirect(url_for("software.index", endpoint_id=ep_id))
 
 
 @software_bp.route("/install", methods=["POST"])
@@ -125,15 +130,20 @@ def install():
     ep = db.get_or_404(Endpoint, endpoint_id)
     sw = db.get_or_404(Software, catalog_id)
     room = f"sw_install_{ep.id}"
+    ep_id = ep.id
+    ep_hostname = ep.hostname
+    sw_install_command = sw.install_command
+    sw_name = sw.name
 
     from flask import current_app
     app = current_app._get_current_object()
 
     def _run():
         with app.app_context():
-            svc = SoftwareService(ep)
-            svc.remote_install(sw.install_command, sw.name, socketio=socketio, room=room)
+            ep_fresh = db.session.get(Endpoint, ep_id)
+            svc = SoftwareService(ep_fresh)
+            svc.remote_install(sw_install_command, sw_name, socketio=socketio, room=room)
 
     threading.Thread(target=_run, daemon=True).start()
-    flash(f"Installing '{sw.name}' on {ep.hostname}…", "info")
+    flash(f"Installing '{sw_name}' on {ep_hostname}…", "info")
     return redirect(url_for("software.index", endpoint_id=endpoint_id))

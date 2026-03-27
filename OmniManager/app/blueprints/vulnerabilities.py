@@ -46,13 +46,16 @@ def index():
 def scan(endpoint_id):
     ep = db.get_or_404(Endpoint, endpoint_id)
     room = f"vuln_scan_{ep.id}"
+    ep_id = ep.id
+    ep_hostname = ep.hostname
 
     from flask import current_app
     app = current_app._get_current_object()
 
     def _run():
         with app.app_context():
-            svc = VulnerabilityService(ep)
+            ep_fresh = db.session.get(Endpoint, ep_id)
+            svc = VulnerabilityService(ep_fresh)
             results, err = svc.scan(socketio=socketio, room=room)
             if err:
                 socketio.emit("vuln_scan_error", {"error": err}, to=room)
@@ -60,7 +63,7 @@ def scan(endpoint_id):
                 socketio.emit("vuln_scan_complete", {"count": len(results)}, to=room)
 
     threading.Thread(target=_run, daemon=True).start()
-    flash(f"Vulnerability scan started for {ep.hostname}.", "info")
+    flash(f"Vulnerability scan started for {ep_hostname}.", "info")
     return redirect(url_for("vulnerabilities.index", endpoint_id=endpoint_id))
 
 
