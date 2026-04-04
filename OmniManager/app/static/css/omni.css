@@ -73,10 +73,20 @@ body {
   transition: opacity 0.15s;
 }
 
-.omni-sidebar.collapsed .omni-logo-text,
-.omni-sidebar.collapsed .sidebar-toggle {
+.omni-sidebar.collapsed .omni-logo-text {
   opacity: 0;
   pointer-events: none;
+  width: 0;
+}
+
+/* Keep toggle button visible and centred when collapsed */
+.omni-sidebar.collapsed .omni-sidebar-header {
+  justify-content: center;
+  padding: 0;
+}
+
+.omni-sidebar.collapsed .omni-logo {
+  display: none;
 }
 
 /* ── Nav list ─────────────────────────────────────────────────────── */

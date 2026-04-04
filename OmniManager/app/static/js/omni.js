@@ -53,16 +53,47 @@ function initSidebar() {
 
   const COLLAPSED_KEY = 'omni_sidebar_collapsed';
 
+  function updateToggleIcon(collapsed) {
+    if (!toggleBtn) return;
+    const icon = toggleBtn.querySelector('i');
+    if (icon) {
+      icon.className = collapsed ? 'bi bi-layout-sidebar-reverse' : 'bi bi-layout-sidebar';
+    }
+    toggleBtn.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+  }
+
+  function updateNavTooltips(collapsed) {
+    document.querySelectorAll('.omni-nav-link').forEach(link => {
+      // Dispose any existing tooltip first
+      const existing = bootstrap.Tooltip.getInstance(link);
+      if (existing) existing.dispose();
+
+      if (collapsed) {
+        const label = link.querySelector('span');
+        if (label) {
+          link.setAttribute('data-bs-toggle', 'tooltip');
+          link.setAttribute('data-bs-placement', 'right');
+          link.setAttribute('title', label.textContent.trim());
+          new bootstrap.Tooltip(link, { trigger: 'hover', placement: 'right' });
+        }
+      } else {
+        link.removeAttribute('data-bs-toggle');
+        link.removeAttribute('title');
+      }
+    });
+  }
+
   function setCollapsed(collapsed) {
     sidebar.classList.toggle('collapsed', collapsed);
     main.classList.toggle('expanded', collapsed);
     localStorage.setItem(COLLAPSED_KEY, collapsed ? '1' : '0');
+    updateToggleIcon(collapsed);
+    updateNavTooltips(collapsed);
   }
 
-  // Restore state
-  if (localStorage.getItem(COLLAPSED_KEY) === '1') {
-    setCollapsed(true);
-  }
+  // Restore saved state
+  const isCollapsed = localStorage.getItem(COLLAPSED_KEY) === '1';
+  setCollapsed(isCollapsed);
 
   if (toggleBtn) {
     toggleBtn.addEventListener('click', () => {
@@ -216,8 +247,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initPingButtons();
   initCopyButtons();
 
-  // Activate Bootstrap tooltips
-  document.querySelectorAll('[title]').forEach(el => {
+  // Activate Bootstrap tooltips (skip nav links — managed by initSidebar)
+  document.querySelectorAll('[title]:not(.omni-nav-link)').forEach(el => {
     new bootstrap.Tooltip(el, { trigger: 'hover', placement: 'top' });
   });
 
