@@ -1,59 +1,46 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller spec for OmniManager
-# Build: pyinstaller OmniManager.spec
-
-import sys
-from pathlib import Path
+# PyInstaller spec for OmniManager desktop app
+# Build:  pyinstaller OmniManager.spec
+# Output: dist/OmniManager.app  (Mac)
+#         dist/OmniManager.exe  (Windows)
 
 block_cipher = None
 
 a = Analysis(
-    ['run.py'],
-    pathex=['.'],
+    ["desktop.py"],
+    pathex=[],
     binaries=[],
     datas=[
-        ('app/templates', 'app/templates'),
-        ('app/static',    'app/static'),
+        ("app/templates",   "app/templates"),
+        ("app/static",      "app/static"),
+        ("config.py",       "."),
     ],
     hiddenimports=[
-        'eventlet',
-        'eventlet.hubs',
-        'eventlet.hubs.epolls',
-        'eventlet.hubs.poll',
-        'eventlet.hubs.selects',
-        'eventlet.green',
-        'eventlet.green.subprocess',
-        'flask_socketio',
-        'flask_login',
-        'flask_wtf',
-        'flask_sqlalchemy',
-        'sqlalchemy.dialects.sqlite',
-        'winrm',
-        'winrm.protocol',
-        'winrm.exceptions',
-        'requests',
-        'requests_ntlm',
-        'requests_credssp',
-        'xmltodict',
-        'email',
-        'email.mime',
-        'email.mime.multipart',
-        'email.mime.text',
+        "flask",
+        "flask_sqlalchemy",
+        "flask_login",
+        "flask_socketio",
+        "flask_wtf",
+        "flask_migrate",
+        "flask_limiter",
+        "flask_limiter.util",
+        "engineio.async_drivers.threading",
+        "socketio",
+        "sqlalchemy.dialects.sqlite",
+        "apscheduler",
+        "apscheduler.schedulers.background",
+        "apscheduler.triggers.cron",
+        "apscheduler.executors.pool",
+        "cryptography",
+        "winrm",
+        "requests",
+        "webview",
+        "webview.platforms.cocoa",
+        "webview.platforms.winforms",
     ],
     hookspath=[],
-    hooksconfig={},
     runtime_hooks=[],
-    excludes=[
-        'tkinter',
-        'matplotlib',
-        'numpy',
-        'pandas',
-        'scipy',
-        'PIL',
-        'cv2',
-    ],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
+    excludes=["tkinter", "matplotlib", "numpy"],
     cipher=block_cipher,
     noarchive=False,
 )
@@ -65,18 +52,12 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='OmniManager',
+    name="OmniManager",
     debug=False,
-    bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    icon=None,
+    console=False,
+    icon="app/static/icon.ico",
 )
 
 coll = COLLECT(
@@ -86,6 +67,20 @@ coll = COLLECT(
     a.datas,
     strip=False,
     upx=True,
-    upx_exclude=[],
-    name='OmniManager',
+    name="OmniManager",
+)
+
+app = BUNDLE(
+    coll,
+    name="OmniManager.app",
+    icon="app/static/icon.icns",
+    bundle_identifier="com.omnimanager.app",
+    info_plist={
+        "NSPrincipalClass": "NSApplication",
+        "NSHighResolutionCapable": True,
+        "CFBundleShortVersionString": "1.0.0",
+        "CFBundleVersion": "1",
+        "LSMinimumSystemVersion": "12.0",
+        "NSRequiresAquaSystemAppearance": False,
+    },
 )
