@@ -7,7 +7,7 @@
   <small class="text-muted">Last updated: <span id="lastUpdated">—</span></small>
 </div>
 
-<!-- ── KPI Cards ────────────────────────────────────────────────────────── -->
+<!-- ── KPI Cards ─────────────────────────────────────────────────────────── -->
 <div class="row g-3 mb-4">
   <div class="col-6 col-xl-3">
     <div class="card omni-stat-card border-start border-primary border-4">
@@ -85,7 +85,104 @@
   </div>
 </div>
 
-<!-- ── Quick Actions + Recent Endpoints ────────────────────────────────── -->
+<!-- ── Charts ─────────────────────────────────────────────────────────────── -->
+<div class="row g-4 mb-4">
+
+  <!-- Endpoint Status -->
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-pie-chart me-1"></i>Endpoint Status</h6>
+        <a href="{{ url_for('endpoints.index') }}" class="btn btn-sm btn-link p-0">View all</a>
+      </div>
+      <div class="card-body d-flex align-items-center justify-content-center">
+        {% if total_endpoints > 0 %}
+          <div style="position:relative;width:100%;max-width:220px">
+            <canvas id="endpointChart"></canvas>
+            <div class="omni-chart-center" id="endpointChartCenter">
+              <div class="fs-3 fw-bold">{{ total_endpoints }}</div>
+              <div class="small text-muted">total</div>
+            </div>
+          </div>
+        {% else %}
+          <div class="text-center text-muted py-4">
+            <i class="bi bi-pc-display fs-3 d-block mb-2"></i>No endpoints yet
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Patch Compliance -->
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-patch-check me-1"></i>Patch Compliance</h6>
+        <a href="{{ url_for('patches.index') }}" class="btn btn-sm btn-link p-0">View all</a>
+      </div>
+      <div class="card-body d-flex align-items-center justify-content-center">
+        {% set total_patch_known = missing_patches + installed_patches %}
+        {% if total_patch_known > 0 %}
+          <div style="position:relative;width:100%;max-width:220px">
+            <canvas id="patchChart"></canvas>
+            <div class="omni-chart-center" id="patchChartCenter">
+              {% if missing_patches == 0 %}
+                <div class="fs-4 fw-bold text-success"><i class="bi bi-check-circle-fill"></i></div>
+                <div class="small text-muted">compliant</div>
+              {% else %}
+                <div class="fs-3 fw-bold text-warning">{{ ((installed_patches / total_patch_known) * 100) | int }}%</div>
+                <div class="small text-muted">patched</div>
+              {% endif %}
+            </div>
+          </div>
+        {% else %}
+          <div class="text-center text-muted py-4">
+            <i class="bi bi-patch-check fs-3 d-block mb-2"></i>No patch data yet
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Vulnerability Severity -->
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-bar-chart me-1"></i>Vulnerability Severity</h6>
+        <a href="{{ url_for('vulnerabilities.index') }}" class="btn btn-sm btn-link p-0">View all</a>
+      </div>
+      <div class="card-body d-flex align-items-center justify-content-center">
+        {% if total_vulns > 0 %}
+          <canvas id="vulnChart" style="width:100%"></canvas>
+        {% else %}
+          <div class="text-center text-muted py-4">
+            <i class="bi bi-shield-check fs-3 d-block mb-2 text-success"></i>No open vulnerabilities
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Patch Severity Breakdown ───────────────────────────────────────────── -->
+{% if patch_severity %}
+<div class="row g-4 mb-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-patch-exclamation me-1"></i>Missing Patches by Severity</h6>
+        <a href="{{ url_for('patches.index') }}" class="btn btn-sm btn-link p-0">View all</a>
+      </div>
+      <div class="card-body">
+        <canvas id="patchSeverityChart" style="max-height:120px"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Quick Actions + Recent Endpoints ──────────────────────────────────── -->
 <div class="row g-4">
   <div class="col-lg-4">
     <div class="card h-100">
@@ -155,8 +252,196 @@
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+.omni-chart-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+}
+</style>
+{% endblock %}
+
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
 document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+
+// ── Shared chart defaults for dark theme ─────────────────────────────────────
+Chart.defaults.color = '#a0aec0';
+Chart.defaults.borderColor = '#1e2a3a';
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+
+const COLORS = {
+  online:      '#10b981',
+  offline:     '#ef4444',
+  unknown:     '#6b7280',
+  installed:   '#10b981',
+  missing:     '#f59e0b',
+  critical:    '#ef4444',
+  important:   '#f97316',
+  high:        '#f97316',
+  moderate:    '#3b82f6',
+  medium:      '#3b82f6',
+  low:         '#6b7280',
+  info:        '#374151',
+  unspecified: '#374151',
+};
+
+// ── 1. Endpoint Status doughnut ───────────────────────────────────────────────
+{% if total_endpoints > 0 %}
+new Chart(document.getElementById('endpointChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Online', 'Offline', 'Unknown'],
+    datasets: [{
+      data: [{{ online }}, {{ offline }}, {{ unknown }}],
+      backgroundColor: [COLORS.online, COLORS.offline, COLORS.unknown],
+      borderWidth: 0,
+      hoverOffset: 6,
+    }]
+  },
+  options: {
+    cutout: '72%',
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: { boxWidth: 12, padding: 14 }
+      },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.label}: ${ctx.parsed}`
+        }
+      }
+    }
+  }
+});
+{% endif %}
+
+// ── 2. Patch Compliance doughnut ──────────────────────────────────────────────
+{% set total_patch_known = missing_patches + installed_patches %}
+{% if total_patch_known > 0 %}
+new Chart(document.getElementById('patchChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Installed', 'Missing'],
+    datasets: [{
+      data: [{{ installed_patches }}, {{ missing_patches }}],
+      backgroundColor: [COLORS.installed, COLORS.missing],
+      borderWidth: 0,
+      hoverOffset: 6,
+    }]
+  },
+  options: {
+    cutout: '72%',
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: { boxWidth: 12, padding: 14 }
+      },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.label}: ${ctx.parsed}`
+        }
+      }
+    }
+  }
+});
+{% endif %}
+
+// ── 3. Vulnerability Severity bar ─────────────────────────────────────────────
+{% if total_vulns > 0 %}
+(function() {
+  const severities = ['critical', 'high', 'medium', 'low', 'info'];
+  const data = {
+    {% for s in ['critical','high','medium','low','info'] %}
+    '{{ s }}': {{ vuln_severity.get(s, 0) }},
+    {% endfor %}
+  };
+  const labels = severities.filter(s => data[s] > 0);
+  const values = labels.map(s => data[s]);
+  const bgColors = labels.map(s => COLORS[s] || COLORS.unknown);
+
+  new Chart(document.getElementById('vulnChart'), {
+    type: 'bar',
+    data: {
+      labels: labels.map(s => s.charAt(0).toUpperCase() + s.slice(1)),
+      datasets: [{
+        data: values,
+        backgroundColor: bgColors,
+        borderRadius: 4,
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.parsed.x} vulnerabilities`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: '#1e2a3a' },
+          ticks: { precision: 0 }
+        },
+        y: { grid: { display: false } }
+      }
+    }
+  });
+})();
+{% endif %}
+
+// ── 4. Missing Patches by Severity horizontal bar ─────────────────────────────
+{% if patch_severity %}
+(function() {
+  const severities = ['critical', 'important', 'moderate', 'low', 'unspecified'];
+  const data = {
+    {% for s in ['critical','important','moderate','low','unspecified'] %}
+    '{{ s }}': {{ patch_severity.get(s, 0) }},
+    {% endfor %}
+  };
+  const labels = severities.filter(s => data[s] > 0);
+  const values = labels.map(s => data[s]);
+  const bgColors = labels.map(s => COLORS[s] || COLORS.unknown);
+
+  new Chart(document.getElementById('patchSeverityChart'), {
+    type: 'bar',
+    data: {
+      labels: labels.map(s => s.charAt(0).toUpperCase() + s.slice(1)),
+      datasets: [{
+        data: values,
+        backgroundColor: bgColors,
+        borderRadius: 4,
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.parsed.x} missing patches`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: '#1e2a3a' },
+          ticks: { precision: 0 }
+        },
+        y: { grid: { display: false } }
+      }
+    }
+  });
+})();
+{% endif %}
 </script>
 {% endblock %}
