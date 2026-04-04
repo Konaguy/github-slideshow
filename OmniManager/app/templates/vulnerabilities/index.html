@@ -8,9 +8,24 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h1 class="h3 mb-0"><i class="bi bi-shield-exclamation me-2"></i>Vulnerabilities</h1>
-  <a href="{{ url_for('vulnerabilities.summary') }}" class="btn btn-outline-secondary btn-sm">
-    <i class="bi bi-bar-chart me-1"></i>Summary
-  </a>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('vulnerabilities.summary') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-bar-chart me-1"></i>Summary
+    </a>
+    <form method="POST" action="{{ url_for('vulnerabilities.scan_all') }}"
+          onsubmit="return confirm('Start vulnerability scan on all online endpoints?')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="input-group input-group-sm">
+        <div class="input-group-text bg-transparent border-end-0">
+          <input class="form-check-input mt-0" type="checkbox" name="include_unknown" value="1"
+                 title="Include unknown-status endpoints">
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm border-start-0" title="Scan all online endpoints">
+          <i class="bi bi-arrow-repeat me-1"></i>Scan All Online
+        </button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <!-- Filters -->

@@ -11,6 +11,10 @@ def create_app(config_name=None):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(config[config_name])
 
+    # Logging (before everything else so startup messages are captured)
+    from app.utils.logging import setup_logging
+    setup_logging(app)
+
     # Initialize extensions
     db.init_app(app)
     csrf.init_app(app)

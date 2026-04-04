@@ -1,9 +1,11 @@
 import json
+import logging
 from datetime import datetime
 from app.extensions import db
 from app.models.vulnerability import VulnerabilityScanResult
 from app.services.winrm_service import WinRMService
 
+logger = logging.getLogger(__name__)
 
 _SCAN_SCRIPT = """
 $vulns = @()
@@ -35,14 +37,17 @@ class VulnerabilityService:
 
     def scan(self, socketio=None, room=None):
         """Scan the endpoint for known vulnerabilities. Returns (results, error)."""
+        logger.info("Vulnerability scan started — endpoint=%s (%s)", self.endpoint.hostname, self.endpoint.ip_address)
         out, err, code = self.winrm.run_ps(_SCAN_SCRIPT)
 
         if code != 0:
+            logger.error("Vulnerability scan failed — endpoint=%s error=%s", self.endpoint.hostname, err)
             return [], err
 
         try:
             data = json.loads(out) if out.strip() else []
         except json.JSONDecodeError as e:
+            logger.error("Vulnerability scan JSON parse error — endpoint=%s error=%s", self.endpoint.hostname, e)
             return [], str(e)
 
         if isinstance(data, dict):
@@ -76,6 +81,7 @@ class VulnerabilityService:
                 socketio.emit("vuln_found", {"cve_id": cve_id, "severity": severity}, to=room)
 
         db.session.commit()
+        logger.info("Vulnerability scan complete — endpoint=%s found=%d", self.endpoint.hostname, len(results))
         return results, None
 
     def update_status(self, vuln_id, new_status):
@@ -88,6 +94,7 @@ class VulnerabilityService:
         if new_status not in allowed:
             return False, f"Invalid status. Must be one of: {', '.join(allowed)}"
 
+        logger.info("Vulnerability %s status → %s — endpoint=%s", vuln.cve_id, new_status, self.endpoint.hostname)
         vuln.status = new_status
         if new_status in ("mitigated", "accepted", "false_positive"):
             vuln.resolved_at = datetime.utcnow()

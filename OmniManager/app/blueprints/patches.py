@@ -1,10 +1,11 @@
 import threading
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required
 from app.extensions import db, socketio
 from app.models.endpoint import Endpoint
 from app.models.patch import PatchScanResult
 from app.services.patch_service import PatchService
+from app.utils.bulk_scan import run_bulk_scan
 
 patches_bp = Blueprint("patches", __name__)
 
@@ -129,6 +130,30 @@ def install_all():
     threading.Thread(target=_run, daemon=True).start()
     flash(f"Installing {len(missing_kb_ids)} patches on {ep_hostname}…", "info")
     return redirect(url_for("patches.index", endpoint_id=endpoint_id))
+
+
+@patches_bp.route("/scan-all", methods=["POST"])
+@login_required
+def scan_all():
+    """Scan all online (and optionally unknown) endpoints for missing patches."""
+    include_unknown = request.form.get("include_unknown") == "1"
+    statuses = ["online", "unknown"] if include_unknown else ["online"]
+    endpoint_ids = [
+        ep.id for ep in Endpoint.query.filter(Endpoint.status.in_(statuses)).all()
+    ]
+    if not endpoint_ids:
+        flash("No online endpoints to scan.", "warning")
+        return redirect(url_for("patches.index"))
+
+    app = current_app._get_current_object()
+
+    def _scan(ep_id):
+        ep = db.session.get(Endpoint, ep_id)
+        PatchService(ep).scan()
+
+    run_bulk_scan(app, endpoint_ids, _scan, label="patch scan")
+    flash(f"Patch scan started on {len(endpoint_ids)} endpoint(s) — results will appear as scans complete.", "info")
+    return redirect(url_for("patches.index"))
 
 
 @patches_bp.route("/dismiss/<int:result_id>", methods=["POST"])

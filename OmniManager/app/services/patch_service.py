@@ -1,9 +1,11 @@
 import json
+import logging
 from datetime import datetime
 from app.extensions import db
 from app.models.patch import PatchScanResult
 from app.services.winrm_service import WinRMService
 
+logger = logging.getLogger(__name__)
 
 _SCAN_SCRIPT = """
 $session = New-Object -ComObject Microsoft.Update.Session
@@ -46,14 +48,17 @@ class PatchService:
 
     def scan(self, socketio=None, room=None):
         """Scan endpoint for missing patches. Returns (results, error)."""
+        logger.info("Patch scan started — endpoint=%s (%s)", self.endpoint.hostname, self.endpoint.ip_address)
         out, err, code = self.winrm.run_ps(_SCAN_SCRIPT)
 
         if code != 0:
+            logger.error("Patch scan failed — endpoint=%s error=%s", self.endpoint.hostname, err)
             return [], err
 
         try:
             data = json.loads(out) if out.strip() else []
         except json.JSONDecodeError as e:
+            logger.error("Patch scan JSON parse error — endpoint=%s error=%s", self.endpoint.hostname, e)
             return [], str(e)
 
         if isinstance(data, dict):
@@ -89,10 +94,12 @@ class PatchService:
                 socketio.emit("patch_found", {"kb_id": kb_id, "title": item.get("Title", "")}, to=room)
 
         db.session.commit()
+        logger.info("Patch scan complete — endpoint=%s missing=%d", self.endpoint.hostname, len(results))
         return results, None
 
     def install(self, kb_id, socketio=None, room=None):
         """Install a specific patch by KB ID. Returns (success, error)."""
+        logger.info("Installing patch KB%s — endpoint=%s", kb_id, self.endpoint.hostname)
         scan_result = PatchScanResult.query.filter_by(
             endpoint_id=self.endpoint.id, kb_id=kb_id
         ).first()
@@ -113,6 +120,11 @@ class PatchService:
                 scan_result.status = "failed"
                 scan_result.error_message = err
             db.session.commit()
+
+        if code == 0:
+            logger.info("Patch KB%s installed — endpoint=%s", kb_id, self.endpoint.hostname)
+        else:
+            logger.error("Patch KB%s failed — endpoint=%s error=%s", kb_id, self.endpoint.hostname, err)
 
         if socketio and room:
             event = "patch_installed" if code == 0 else "patch_failed"

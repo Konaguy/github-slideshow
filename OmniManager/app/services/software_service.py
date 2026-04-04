@@ -1,9 +1,11 @@
 import json
+import logging
 from datetime import datetime
 from app.extensions import db
 from app.models.software import SoftwareScanResult
 from app.services.winrm_service import WinRMService
 
+logger = logging.getLogger(__name__)
 
 _SCAN_SCRIPT = """
 $paths = @(
@@ -36,14 +38,17 @@ class SoftwareService:
 
     def scan(self, socketio=None, room=None):
         """Enumerate installed software on the endpoint. Returns (results, error)."""
+        logger.info("Software scan started — endpoint=%s (%s)", self.endpoint.hostname, self.endpoint.ip_address)
         out, err, code = self.winrm.run_ps(_SCAN_SCRIPT)
 
         if code != 0:
+            logger.error("Software scan failed — endpoint=%s error=%s", self.endpoint.hostname, err)
             return [], err
 
         try:
             data = json.loads(out) if out.strip() else []
         except json.JSONDecodeError as e:
+            logger.error("Software scan JSON parse error — endpoint=%s error=%s", self.endpoint.hostname, e)
             return [], str(e)
 
         if isinstance(data, dict):
@@ -72,6 +77,7 @@ class SoftwareService:
                 socketio.emit("software_found", {"name": name}, to=room)
 
         db.session.commit()
+        logger.info("Software scan complete — endpoint=%s found=%d", self.endpoint.hostname, len(results))
         return results, None
 
     def uninstall(self, software_id, socketio=None, room=None):
@@ -83,6 +89,7 @@ class SoftwareService:
         if not sw.uninstall_string:
             return False, "No uninstall string available"
 
+        logger.info("Uninstalling '%s' — endpoint=%s", sw.name, self.endpoint.hostname)
         sw.status = "uninstalling"
         db.session.commit()
 
@@ -98,8 +105,10 @@ class SoftwareService:
 
         success = code == 0
         if success:
+            logger.info("Uninstall succeeded — '%s' endpoint=%s", sw.name, self.endpoint.hostname)
             db.session.delete(sw)
         else:
+            logger.error("Uninstall failed — '%s' endpoint=%s error=%s", sw.name, self.endpoint.hostname, err)
             sw.status = "failed"
             sw.error_message = err
         db.session.commit()
@@ -112,6 +121,7 @@ class SoftwareService:
 
     def remote_install(self, install_command, name, socketio=None, room=None):
         """Run an arbitrary install command on the endpoint. Returns (success, error)."""
+        logger.info("Installing '%s' — endpoint=%s", name, self.endpoint.hostname)
         if socketio and room:
             socketio.emit("sw_installing", {"name": name}, to=room)
 
@@ -121,6 +131,11 @@ class SoftwareService:
             f'-Wait -PassThru | Select-Object -ExpandProperty ExitCode'
         )
         out, err, code = self.winrm.run_ps(script)
+
+        if code == 0:
+            logger.info("Install succeeded — '%s' endpoint=%s", name, self.endpoint.hostname)
+        else:
+            logger.error("Install failed — '%s' endpoint=%s error=%s", name, self.endpoint.hostname, err)
 
         if socketio and room:
             event = "sw_installed" if code == 0 else "sw_install_failed"
