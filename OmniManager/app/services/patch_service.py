@@ -95,6 +95,15 @@ class PatchService:
 
         db.session.commit()
         logger.info("Patch scan complete — endpoint=%s missing=%d", self.endpoint.hostname, len(results))
+
+        critical = [r for r in results if r.severity in ("critical", "important")]
+        if critical:
+            try:
+                from app.utils.mailer import send_patch_alert
+                send_patch_alert(self.endpoint, critical)
+            except Exception:
+                logger.exception("Mailer error during patch alert")
+
         return results, None
 
     def install(self, kb_id, socketio=None, room=None):

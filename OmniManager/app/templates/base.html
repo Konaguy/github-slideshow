@@ -65,6 +65,11 @@
         <i class="bi bi-people"></i><span>Users</span>
       </a>
     </li>
+    <li>
+      <a href="{{ url_for('settings.index') }}" class="omni-nav-link {% if request.blueprint == 'settings' %}active{% endif %}">
+        <i class="bi bi-gear"></i><span>Settings</span>
+      </a>
+    </li>
     {% endif %}
     <li>
       <a href="{{ url_for('auth.profile') }}" class="omni-nav-link {% if request.endpoint == 'auth.profile' %}active{% endif %}">

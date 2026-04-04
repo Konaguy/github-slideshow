@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+<li class="breadcrumb-item active">Settings</li>
+{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-4"><i class="bi bi-gear me-2"></i>Settings</h1>
+
+<!-- ── Scheduled Scans ─────────────────────────────────────────────────────── -->
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-clock-history text-primary"></i>
+    <strong>Scheduled Scans</strong>
+    <span class="text-muted small ms-1">— cron fields accept numbers or <code>*</code></span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Job</th>
+            <th>Enabled</th>
+            <th>Hour (0-23)</th>
+            <th>Minute (0-59)</th>
+            <th>Day of week</th>
+            <th>Include unknown</th>
+            <th>Last run</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for job in jobs %}
+          <tr>
+            <form method="POST" action="{{ url_for('settings.update_schedule', job_id=job.job_id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <td class="fw-semibold">{{ job.label }}</td>
+              <td>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="enabled" value="1"
+                         {% if job.enabled %}checked{% endif %}>
+                </div>
+              </td>
+              <td>
+                <input type="text" class="form-control form-control-sm" style="width:70px"
+                       name="cron_hour" value="{{ job.cron_hour }}" placeholder="2">
+              </td>
+              <td>
+                <input type="text" class="form-control form-control-sm" style="width:70px"
+                       name="cron_minute" value="{{ job.cron_minute }}" placeholder="0">
+              </td>
+              <td>
+                <select name="cron_day_of_week" class="form-select form-select-sm" style="width:140px">
+                  {% set dow_options = [('*','Every day'),('mon-fri','Weekdays (M-F)'),('sat,sun','Weekends'),('mon','Monday'),('tue','Tuesday'),('wed','Wednesday'),('thu','Thursday'),('fri','Friday'),('sat','Saturday'),('sun','Sunday')] %}
+                  {% for val, label in dow_options %}
+                  <option value="{{ val }}" {% if job.cron_day_of_week == val %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="include_unknown" value="1"
+                         {% if job.include_unknown %}checked{% endif %}>
+                </div>
+              </td>
+              <td class="small text-muted">
+                {{ job.last_run_at.strftime('%Y-%m-%d %H:%M') if job.last_run_at else '—' }}
+              </td>
+              <td>
+                <button type="submit" class="btn btn-sm btn-primary">Save</button>
+              </td>
+            </form>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Email Alerts ────────────────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-envelope-exclamation text-warning"></i>
+    <strong>Email Alerts</strong>
+    <span class="text-muted small ms-1">— sent when critical patches or vulnerabilities are found</span>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('settings.update_mail') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="row g-3">
+        <div class="col-12">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="alertsEnabled"
+                   name="ALERTS_ENABLED" value="1"
+                   {% if mail_cfg.ALERTS_ENABLED == '1' %}checked{% endif %}>
+            <label class="form-check-label fw-semibold" for="alertsEnabled">Enable email alerts</label>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">SMTP Server</label>
+          <input type="text" class="form-control" name="MAIL_SERVER"
+                 value="{{ mail_cfg.MAIL_SERVER }}" placeholder="smtp.example.com">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Port</label>
+          <input type="number" class="form-control" name="MAIL_PORT"
+                 value="{{ mail_cfg.MAIL_PORT or '587' }}" min="1" max="65535">
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="useTls"
+                   name="MAIL_USE_TLS" value="1"
+                   {% if mail_cfg.MAIL_USE_TLS != '0' %}checked{% endif %}>
+            <label class="form-check-label" for="useTls">Use STARTTLS</label>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">SMTP Username</label>
+          <input type="text" class="form-control" name="MAIL_USERNAME"
+                 value="{{ mail_cfg.MAIL_USERNAME }}" placeholder="alerts@example.com">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">SMTP Password</label>
+          <input type="password" class="form-control" name="MAIL_PASSWORD"
+                 value="{{ mail_cfg.MAIL_PASSWORD }}" placeholder="••••••••">
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">From Address</label>
+          <input type="email" class="form-control" name="MAIL_FROM"
+                 value="{{ mail_cfg.MAIL_FROM }}" placeholder="omnimanager@example.com">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">To Address(es)
+            <span class="text-muted small">(comma-separated)</span>
+          </label>
+          <input type="text" class="form-control" name="MAIL_TO"
+                 value="{{ mail_cfg.MAIL_TO }}" placeholder="admin@example.com, sec@example.com">
+        </div>
+
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-floppy me-1"></i>Save Email Settings
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

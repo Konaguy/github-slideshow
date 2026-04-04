@@ -1,5 +1,7 @@
+import csv
+import io
 import threading
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, Response
 from flask_login import login_required
 from app.extensions import db, socketio
 from app.models.endpoint import Endpoint
@@ -112,6 +114,48 @@ def summary():
     ).limit(10).all()
 
     return render_template("vulnerabilities/summary.html", by_severity=by_severity, by_endpoint=by_endpoint)
+
+
+@vulnerabilities_bp.route("/export")
+@login_required
+def export_csv():
+    severity_filter = request.args.get("severity", "")
+    status_filter = request.args.get("status", "open")
+    endpoint_id = request.args.get("endpoint_id", type=int)
+
+    query = VulnerabilityScanResult.query
+    if severity_filter:
+        query = query.filter_by(severity=severity_filter)
+    if status_filter:
+        query = query.filter_by(status=status_filter)
+    if endpoint_id:
+        query = query.filter_by(endpoint_id=endpoint_id)
+
+    rows = query.order_by(
+        VulnerabilityScanResult.cvss_score.desc(),
+        VulnerabilityScanResult.scanned_at.desc(),
+    ).all()
+
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["Endpoint", "CVE / ID", "Title", "Severity", "CVSS Score", "Component", "Status", "Scanned At"])
+    for v in rows:
+        w.writerow([
+            v.endpoint.hostname,
+            v.cve_id,
+            v.title or "",
+            v.severity,
+            f"{v.cvss_score:.1f}" if v.cvss_score else "",
+            v.affected_component or "",
+            v.status,
+            v.scanned_at.strftime("%Y-%m-%d %H:%M") if v.scanned_at else "",
+        ])
+
+    return Response(
+        buf.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=vulnerabilities.csv"},
+    )
 
 
 @vulnerabilities_bp.route("/scan-all", methods=["POST"])

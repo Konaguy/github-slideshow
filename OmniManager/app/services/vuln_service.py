@@ -82,6 +82,15 @@ class VulnerabilityService:
 
         db.session.commit()
         logger.info("Vulnerability scan complete — endpoint=%s found=%d", self.endpoint.hostname, len(results))
+
+        critical = [r for r in results if r.severity in ("critical", "high")]
+        if critical:
+            try:
+                from app.utils.mailer import send_vuln_alert
+                send_vuln_alert(self.endpoint, critical)
+            except Exception:
+                logger.exception("Mailer error during vuln alert")
+
         return results, None
 
     def update_status(self, vuln_id, new_status):

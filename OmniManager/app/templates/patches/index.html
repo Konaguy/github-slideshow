@@ -19,6 +19,10 @@
       </button>
     </form>
     {% endif %}
+    <a href="{{ url_for('patches.export_csv', severity=severity_filter, status=status_filter, endpoint_id=endpoint_id or '') }}"
+       class="btn btn-outline-secondary btn-sm" title="Export current view to CSV">
+      <i class="bi bi-filetype-csv me-1"></i>Export CSV
+    </a>
     <form method="POST" action="{{ url_for('patches.scan_all') }}"
           onsubmit="return confirm('Start patch scan on all online endpoints?')">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

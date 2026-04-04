@@ -1,5 +1,7 @@
+import csv
+import io
 import threading
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, Response
 from flask_login import login_required
 from app.extensions import db, socketio
 from app.models.endpoint import Endpoint
@@ -172,3 +174,37 @@ def scan_all():
     run_bulk_scan(app, endpoint_ids, _scan, label="software scan")
     flash(f"Software scan started on {len(endpoint_ids)} endpoint(s) — results will appear as scans complete.", "info")
     return redirect(url_for("software.index"))
+
+
+@software_bp.route("/export")
+@login_required
+def export_csv():
+    q_str = request.args.get("q", "").strip()
+    endpoint_id = request.args.get("endpoint_id", type=int)
+
+    query = SoftwareScanResult.query
+    if q_str:
+        query = query.filter(SoftwareScanResult.name.ilike(f"%{q_str}%"))
+    if endpoint_id:
+        query = query.filter_by(endpoint_id=endpoint_id)
+
+    rows = query.order_by(SoftwareScanResult.name).all()
+
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["Endpoint", "Name", "Publisher", "Version", "Install Date", "Status"])
+    for s in rows:
+        w.writerow([
+            s.endpoint.hostname,
+            s.name,
+            s.publisher or "",
+            s.version or "",
+            s.install_date or "",
+            s.status,
+        ])
+
+    return Response(
+        buf.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=software.csv"},
+    )

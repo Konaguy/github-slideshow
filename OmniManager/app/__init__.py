@@ -1,4 +1,5 @@
 import os
+import sys
 from flask import Flask
 from config import config
 from app.extensions import db, login_manager, socketio, csrf, migrate, limiter
@@ -41,6 +42,7 @@ def create_app(config_name=None):
     from app.blueprints.vulnerabilities import vulnerabilities_bp
     from app.blueprints.rdp import rdp_bp
     from app.blueprints.api import api_bp
+    from app.blueprints.settings import settings_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -50,6 +52,7 @@ def create_app(config_name=None):
     app.register_blueprint(vulnerabilities_bp, url_prefix="/vulnerabilities")
     app.register_blueprint(rdp_bp, url_prefix="/rdp")
     app.register_blueprint(api_bp, url_prefix="/api/v1")
+    app.register_blueprint(settings_bp, url_prefix="/settings")
 
     # SocketIO room management
     @socketio.on("join")
@@ -63,6 +66,16 @@ def create_app(config_name=None):
     with app.app_context():
         db.create_all()
         _seed_admin_user()
+
+    # Start APScheduler — skip in reloader parent process and Flask CLI sub-commands
+    _is_cli_cmd = any(arg in sys.argv for arg in ("db", "shell", "routes", "test"))
+    _is_reloader_parent = app.debug and os.environ.get("WERKZEUG_RUN_MAIN") != "true"
+    if not _is_cli_cmd and not _is_reloader_parent:
+        try:
+            from app.utils.scheduler import init_scheduler
+            init_scheduler(app)
+        except Exception:
+            app.logger.exception("Scheduler failed to start — scheduled scans disabled")
 
     return app
 

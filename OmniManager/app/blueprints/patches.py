@@ -1,5 +1,7 @@
+import csv
+import io
 import threading
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, Response
 from flask_login import login_required
 from app.extensions import db, socketio
 from app.models.endpoint import Endpoint
@@ -163,3 +165,41 @@ def dismiss(result_id):
     db.session.delete(result)
     db.session.commit()
     return jsonify({"ok": True})
+
+
+@patches_bp.route("/export")
+@login_required
+def export_csv():
+    severity_filter = request.args.get("severity", "")
+    status_filter = request.args.get("status", "missing")
+    endpoint_id = request.args.get("endpoint_id", type=int)
+
+    query = PatchScanResult.query
+    if severity_filter:
+        query = query.filter_by(severity=severity_filter)
+    if status_filter:
+        query = query.filter_by(status=status_filter)
+    if endpoint_id:
+        query = query.filter_by(endpoint_id=endpoint_id)
+
+    rows = query.order_by(PatchScanResult.scanned_at.desc()).all()
+
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["Endpoint", "KB ID", "Title", "Severity", "Status", "Scanned At", "Installed At"])
+    for r in rows:
+        w.writerow([
+            r.endpoint.hostname,
+            r.kb_id,
+            r.title or "",
+            r.severity,
+            r.status,
+            r.scanned_at.strftime("%Y-%m-%d %H:%M") if r.scanned_at else "",
+            r.installed_at.strftime("%Y-%m-%d %H:%M") if r.installed_at else "",
+        ])
+
+    return Response(
+        buf.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=patches.csv"},
+    )
