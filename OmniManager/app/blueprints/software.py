@@ -8,6 +8,7 @@ from app.models.endpoint import Endpoint
 from app.models.software import Software, SoftwareScanResult
 from app.services.software_service import SoftwareService
 from app.utils.bulk_scan import run_bulk_scan
+from app.utils.audit import log_action
 
 software_bp = Blueprint("software", __name__)
 
@@ -120,6 +121,7 @@ def uninstall(software_id):
             svc.uninstall(software_id, socketio=socketio, room=room)
 
     threading.Thread(target=_run, daemon=True).start()
+    log_action("software.uninstall", object_type="software", object_id=software_id, detail=f"'{sw_name}' on endpoint {ep_id}")
     flash(f"Uninstall of '{sw_name}' started.", "info")
     return redirect(url_for("software.index", endpoint_id=ep_id))
 
@@ -148,6 +150,8 @@ def install():
             svc.remote_install(sw_install_command, sw_name, socketio=socketio, room=room)
 
     threading.Thread(target=_run, daemon=True).start()
+    log_action("software.install", object_type="software", object_id=catalog_id,
+               detail=f"'{sw_name}' on {ep_hostname}")
     flash(f"Installing '{sw_name}' on {ep_hostname}…", "info")
     return redirect(url_for("software.index", endpoint_id=endpoint_id))
 

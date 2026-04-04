@@ -89,3 +89,43 @@ def _send(cfg: dict, subject: str, body: str) -> None:
         logger.info("Alert email sent: %s", subject)
     except Exception:
         logger.exception("Failed to send alert email: %s", subject)
+
+
+def send_password_reset(to_email: str, reset_url: str) -> bool:
+    """
+    Send a password-reset link. Uses the same SMTP config as alerts.
+    Returns True on success, False on failure.
+    """
+    cfg = _get_cfg()
+    if not cfg.get("server") or not cfg.get("from_addr"):
+        logger.warning("Password reset email not sent — SMTP not configured")
+        return False
+
+    subject = "[OmniManager] Password reset request"
+    body = (
+        "You requested a password reset for your OmniManager account.\n\n"
+        f"Click the link below to set a new password (valid for 1 hour):\n\n"
+        f"  {reset_url}\n\n"
+        "If you did not request this, you can ignore this email."
+    )
+
+    to_addrs = [to_email]
+    single_cfg = {**cfg, "to_addrs": to_addrs}
+    try:
+        msg = MIMEText(body, "plain", "utf-8")
+        msg["Subject"] = subject
+        msg["From"] = cfg["from_addr"]
+        msg["To"] = to_email
+
+        with smtplib.SMTP(cfg["server"], cfg["port"], timeout=15) as smtp:
+            if cfg["use_tls"]:
+                smtp.starttls()
+            if cfg["username"] and cfg["password"]:
+                smtp.login(cfg["username"], cfg["password"])
+            smtp.sendmail(cfg["from_addr"], to_addrs, msg.as_string())
+
+        logger.info("Password reset email sent to %s", to_email)
+        return True
+    except Exception:
+        logger.exception("Failed to send password reset email to %s", to_email)
+        return False

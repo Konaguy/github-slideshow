@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Search{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+<li class="breadcrumb-item active">Search</li>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+  <h1 class="h3 mb-3"><i class="bi bi-search me-2"></i>Search</h1>
+  <form method="GET" action="{{ url_for('search.results') }}" class="d-flex gap-2" style="max-width:520px">
+    <input type="search" class="form-control" name="q" value="{{ q }}"
+           placeholder="Search endpoints, patches, software, CVEs…" autofocus>
+    <button type="submit" class="btn btn-primary px-3">
+      <i class="bi bi-search"></i>
+    </button>
+  </form>
+</div>
+
+{% if q %}
+  {% set total = categories | sum(attribute='items') | list | length %}
+  {% if total == 0 %}
+  <div class="text-center text-muted py-5">
+    <i class="bi bi-search fs-3 d-block mb-2"></i>
+    No results for <strong>{{ q }}</strong>
+  </div>
+  {% else %}
+  <p class="text-muted mb-4">Results for <strong>{{ q }}</strong></p>
+  <div class="row g-4">
+    {% for cat in categories %}
+    {% if cat.items %}
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <i class="bi {{ cat.icon }} me-2"></i>
+          <strong>{{ cat.label }}</strong>
+          <span class="badge bg-secondary ms-2">{{ cat.items | length }}{% if cat.items | length == 10 %}+{% endif %}</span>
+        </div>
+        <div class="list-group list-group-flush">
+          {% for item in cat.items %}
+            {% if cat.type == 'endpoint' %}
+            <a href="{{ url_for('endpoints.detail', endpoint_id=item.id) }}"
+               class="list-group-item list-group-item-action d-flex align-items-center gap-3">
+              <span class="badge bg-{{ {'online':'success','offline':'danger','unknown':'secondary'}[item.status] }}">{{ item.status }}</span>
+              <span class="fw-semibold">{{ item.hostname }}</span>
+              <span class="text-muted small">{{ item.ip_address }}</span>
+              {% if item.domain %}<span class="text-muted small">{{ item.domain }}</span>{% endif %}
+            </a>
+            {% elif cat.type == 'patch' %}
+            <a href="{{ url_for('patches.index', endpoint_id=item.endpoint_id) }}"
+               class="list-group-item list-group-item-action d-flex align-items-center gap-3">
+              <code class="small">KB{{ item.kb_id }}</code>
+              <span class="badge bg-{{ item.severity_badge }}">{{ item.severity }}</span>
+              <span class="text-truncate">{{ item.title or '(no title)' }}</span>
+              <span class="text-muted small ms-auto text-nowrap">{{ item.endpoint.hostname }}</span>
+            </a>
+            {% elif cat.type == 'software' %}
+            <a href="{{ url_for('software.index', endpoint_id=item.endpoint_id, q=item.name) }}"
+               class="list-group-item list-group-item-action d-flex align-items-center gap-3">
+              <span class="fw-semibold">{{ item.name }}</span>
+              <span class="text-muted small">{{ item.version or '' }}</span>
+              <span class="text-muted small ms-auto text-nowrap">{{ item.endpoint.hostname }}</span>
+            </a>
+            {% elif cat.type == 'vuln' %}
+            <a href="{{ url_for('vulnerabilities.detail', vuln_id=item.id) }}"
+               class="list-group-item list-group-item-action d-flex align-items-center gap-3">
+              <code class="small">{{ item.cve_id }}</code>
+              <span class="badge bg-{{ item.severity_badge }}">{{ item.severity }}</span>
+              <span class="text-truncate">{{ item.title or '(no title)' }}</span>
+              <span class="text-muted small ms-auto text-nowrap">{{ item.endpoint.hostname }}</span>
+            </a>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endif %}
+{% endblock %}

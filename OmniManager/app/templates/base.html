@@ -70,6 +70,11 @@
         <i class="bi bi-gear"></i><span>Settings</span>
       </a>
     </li>
+    <li>
+      <a href="{{ url_for('audit.index') }}" class="omni-nav-link {% if request.blueprint == 'audit' %}active{% endif %}">
+        <i class="bi bi-journal-text"></i><span>Audit Log</span>
+      </a>
+    </li>
     {% endif %}
     <li>
       <a href="{{ url_for('auth.profile') }}" class="omni-nav-link {% if request.endpoint == 'auth.profile' %}active{% endif %}">
@@ -105,6 +110,16 @@
       </ol>
     </nav>
     <div class="ms-auto d-flex align-items-center gap-2">
+      <form method="GET" action="{{ url_for('search.results') }}" class="d-flex">
+        <div class="input-group input-group-sm">
+          <input type="search" class="form-control form-control-sm bg-transparent border-secondary"
+                 name="q" placeholder="Search…" style="width:180px"
+                 value="{{ request.args.get('q', '') if request.blueprint == 'search' else '' }}">
+          <button type="submit" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-search"></i>
+          </button>
+        </div>
+      </form>
       <a href="{{ url_for('api.stats') }}" class="btn btn-sm btn-outline-secondary" target="_blank" title="API Stats">
         <i class="bi bi-braces"></i>
       </a>

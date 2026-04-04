@@ -8,6 +8,7 @@ from app.models.endpoint import Endpoint
 from app.models.patch import PatchScanResult
 from app.services.patch_service import PatchService
 from app.utils.bulk_scan import run_bulk_scan
+from app.utils.audit import log_action
 
 patches_bp = Blueprint("patches", __name__)
 
@@ -64,6 +65,7 @@ def scan(endpoint_id):
                 socketio.emit("scan_complete", {"count": len(results)}, to=room)
 
     threading.Thread(target=_run, daemon=True).start()
+    log_action("patch.scan", object_type="endpoint", object_id=ep_id, detail=ep_hostname)
     flash(f"Patch scan started for {ep_hostname}. Watch the live feed.", "info")
     return redirect(url_for("patches.scan_status", endpoint_id=ep_id))
 
@@ -102,6 +104,8 @@ def install():
                 socketio.emit("install_error", {"kb_id": kb_id, "error": err}, to=room)
 
     threading.Thread(target=_run, daemon=True).start()
+    log_action("patch.install", object_type="patch", object_id=kb_id,
+               detail=f"KB{kb_id} on {ep_hostname}")
     flash(f"Installing KB{kb_id} on {ep_hostname}…", "info")
     return redirect(url_for("patches.index", endpoint_id=endpoint_id))
 

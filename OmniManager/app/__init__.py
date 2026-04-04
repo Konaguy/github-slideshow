@@ -43,6 +43,8 @@ def create_app(config_name=None):
     from app.blueprints.rdp import rdp_bp
     from app.blueprints.api import api_bp
     from app.blueprints.settings import settings_bp
+    from app.blueprints.audit import audit_bp
+    from app.blueprints.search import search_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -53,6 +55,8 @@ def create_app(config_name=None):
     app.register_blueprint(rdp_bp, url_prefix="/rdp")
     app.register_blueprint(api_bp, url_prefix="/api/v1")
     app.register_blueprint(settings_bp, url_prefix="/settings")
+    app.register_blueprint(audit_bp, url_prefix="/audit")
+    app.register_blueprint(search_bp, url_prefix="/search")
 
     # SocketIO room management
     @socketio.on("join")

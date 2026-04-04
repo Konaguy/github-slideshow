@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Audit Log{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+<li class="breadcrumb-item active">Audit Log</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0"><i class="bi bi-journal-text me-2"></i>Audit Log</h1>
+  <span class="text-muted small">{{ logs.total }} total entries</span>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="GET" class="row g-2 align-items-end">
+      <div class="col-sm-3">
+        <input type="text" class="form-control form-control-sm" name="user"
+               value="{{ q_user }}" placeholder="Username…">
+      </div>
+      <div class="col-sm-3">
+        <select name="action" class="form-select form-select-sm">
+          <option value="">All Actions</option>
+          {% for a in action_types %}
+          <option value="{{ a }}" {% if q_action == a %}selected{% endif %}>{{ a }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-2">
+        <input type="date" class="form-control form-control-sm" name="date_from" value="{{ date_from }}">
+      </div>
+      <div class="col-sm-2">
+        <input type="date" class="form-control form-control-sm" name="date_to" value="{{ date_to }}">
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-secondary">Filter</button>
+        <a href="{{ url_for('audit.index') }}" class="btn btn-sm btn-link">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 small">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>User</th>
+          <th>Action</th>
+          <th>Object</th>
+          <th>Detail</th>
+          <th>IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in logs.items %}
+        <tr>
+          <td class="text-muted text-nowrap">{{ entry.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+          <td>
+            <span class="fw-semibold">{{ entry.username }}</span>
+          </td>
+          <td>
+            {% set action_color = {
+              'login.success': 'success', 'login.fail': 'danger', 'logout': 'secondary',
+              'patch.install': 'warning', 'software.install': 'info', 'software.uninstall': 'danger',
+              'vuln.status_change': 'info', 'endpoint.create': 'success',
+              'endpoint.delete': 'danger', 'user.create': 'success', 'user.delete': 'danger'
+            } %}
+            <span class="badge bg-{{ action_color.get(entry.action, 'secondary') }}">{{ entry.action }}</span>
+          </td>
+          <td class="text-muted">
+            {% if entry.object_type %}
+              {{ entry.object_type }}
+              {% if entry.object_id %}<code>{{ entry.object_id }}</code>{% endif %}
+            {% else %}—{% endif %}
+          </td>
+          <td class="text-truncate" style="max-width:260px" title="{{ entry.detail or '' }}">
+            {{ entry.detail or '—' }}
+          </td>
+          <td class="text-muted">{{ entry.ip_address or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-5">
+            <i class="bi bi-journal-x fs-3 d-block mb-2"></i>
+            No audit entries found.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if logs.pages > 1 %}
+  <div class="card-footer">
+    <nav>
+      <ul class="pagination pagination-sm mb-0 justify-content-center">
+        {% for p in logs.iter_pages() %}
+          {% if p %}
+            <li class="page-item {% if p == logs.page %}active{% endif %}">
+              <a class="page-link" href="{{ url_for('audit.index', page=p, user=q_user, action=q_action, date_from=date_from, date_to=date_to) }}">{{ p }}</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

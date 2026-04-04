@@ -8,6 +8,7 @@ from app.models.endpoint import Endpoint
 from app.models.vulnerability import VulnerabilityScanResult
 from app.services.vuln_service import VulnerabilityService
 from app.utils.bulk_scan import run_bulk_scan
+from app.utils.audit import log_action
 
 vulnerabilities_bp = Blueprint("vulnerabilities", __name__)
 
@@ -80,6 +81,8 @@ def update_status(vuln_id):
     svc = VulnerabilityService(ep)
     success, err = svc.update_status(vuln_id, new_status)
     if success:
+        log_action("vuln.status_change", object_type="vulnerability", object_id=vuln_id,
+                   detail=f"{vuln.cve_id} → {new_status} on {ep.hostname}")
         flash(f"Vulnerability {vuln.cve_id} status updated to '{new_status}'.", "success")
     else:
         flash(f"Error: {err}", "danger")

@@ -8,6 +8,7 @@ from app.models.patch import PatchScanResult
 from app.models.software import SoftwareScanResult
 from app.models.vulnerability import VulnerabilityScanResult
 from app.services.winrm_service import WinRMService
+from app.utils.audit import log_action
 
 endpoints_bp = Blueprint("endpoints", __name__)
 
@@ -58,6 +59,8 @@ def new():
         )
         db.session.add(ep)
         db.session.commit()
+        log_action("endpoint.create", object_type="endpoint", object_id=ep.id,
+                   detail=f"{hostname} ({ip_address})")
         flash(f"Endpoint '{hostname}' added.", "success")
         return redirect(url_for("endpoints.detail", endpoint_id=ep.id))
 
@@ -130,6 +133,8 @@ def delete(endpoint_id):
     name = ep.hostname
     db.session.delete(ep)
     db.session.commit()
+    log_action("endpoint.delete", object_type="endpoint", object_id=endpoint_id,
+               detail=name)
     flash(f"Endpoint '{name}' deleted.", "success")
     return redirect(url_for("endpoints.index"))
 
