@@ -1,0 +1,386 @@
+---
+layout: jobsite
+title: "Pricing — Job Seeker Subscriptions"
+description: "Simple pricing for cybersecurity professionals. Free to Pro to Elite — unlock unlimited job applications, alerts, and career tools."
+---
+
+<!-- Header -->
+<section class="py-16 bg-navy-800/40 border-b border-navy-700">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+    <h1 class="text-3xl md:text-5xl font-extrabold text-white mb-4">Pricing for Job Seekers</h1>
+    <p class="text-slate-400 text-lg max-w-xl mx-auto">Start free. Upgrade when you're ready to accelerate your search.</p>
+
+    <!-- Billing Toggle -->
+    <div class="inline-flex items-center bg-navy-800 border border-navy-700 rounded-xl p-1 mt-6">
+      <button id="monthlyToggle" onclick="setBilling('monthly')" class="px-5 py-2 rounded-lg text-sm font-semibold transition-all bg-cyber-600 text-white">Monthly</button>
+      <button id="annualToggle" onclick="setBilling('annual')" class="px-5 py-2 rounded-lg text-sm font-semibold transition-all text-slate-400 hover:text-white">
+        Annual <span class="text-xs text-emerald-400 ml-1">Save 25%</span>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- Seeker Plans -->
+<section class="py-16">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="grid md:grid-cols-3 gap-6">
+
+      <!-- Free -->
+      <div class="bg-navy-800 border border-navy-700 rounded-2xl p-7 flex flex-col card-hover">
+        <div class="mb-1">
+          <span class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Free</span>
+        </div>
+        <div class="mb-2">
+          <span class="text-4xl font-extrabold text-white">$0</span>
+        </div>
+        <p class="text-slate-400 text-sm mb-6">Everything you need to get started. No credit card required.</p>
+
+        <ul class="space-y-3 mb-8 flex-1">
+          <li class="flex items-start gap-2.5 text-sm text-slate-300">
+            <svg class="w-4 h-4 text-cyber-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Browse all job listings
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-300">
+            <svg class="w-4 h-4 text-cyber-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Apply to 5 jobs per month
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-300">
+            <svg class="w-4 h-4 text-cyber-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Basic profile page
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-300">
+            <svg class="w-4 h-4 text-cyber-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            1 saved job alert
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-400">
+            <svg class="w-4 h-4 text-slate-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            One-click apply
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-400">
+            <svg class="w-4 h-4 text-slate-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            Salary insights
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-400">
+            <svg class="w-4 h-4 text-slate-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            Resume boost
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-400">
+            <svg class="w-4 h-4 text-slate-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            Career coaching session
+          </li>
+        </ul>
+
+        <button onclick="openModal('registerModal')" class="w-full bg-navy-700 hover:bg-navy-600 border border-navy-600 hover:border-cyber-500/50 text-white font-semibold py-3 rounded-xl text-sm transition-all">
+          Get Started Free
+        </button>
+      </div>
+
+      <!-- Pro — Most Popular -->
+      <div class="bg-gradient-to-b from-cyber-600/20 to-navy-800 border-2 border-cyber-500 rounded-2xl p-7 flex flex-col relative card-hover">
+        <div class="absolute -top-3 left-1/2 -translate-x-1/2">
+          <span class="bg-cyber-500 text-white text-xs font-bold px-3 py-1 rounded-full">Most Popular</span>
+        </div>
+        <div class="mb-1">
+          <span class="text-cyber-400 text-xs font-semibold uppercase tracking-wider">Pro</span>
+        </div>
+        <div class="mb-2 flex items-end gap-2">
+          <span id="proPrice" class="text-4xl font-extrabold text-white">$19</span>
+          <span class="text-slate-400 text-sm mb-1">/ month</span>
+        </div>
+        <p class="text-slate-400 text-sm mb-1" id="proAnnualNote"></p>
+        <p class="text-slate-400 text-sm mb-6">Unlimited access for serious job seekers.</p>
+
+        <ul class="space-y-3 mb-8 flex-1">
+          <li class="flex items-start gap-2.5 text-sm text-slate-200">
+            <svg class="w-4 h-4 text-cyber-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            <strong>Everything in Free</strong>
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-200">
+            <svg class="w-4 h-4 text-cyber-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Unlimited job applications
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-200">
+            <svg class="w-4 h-4 text-cyber-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            One-click apply with saved profile
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-200">
+            <svg class="w-4 h-4 text-cyber-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Unlimited job alerts &amp; notifications
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-200">
+            <svg class="w-4 h-4 text-cyber-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Salary benchmarking insights
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-200">
+            <svg class="w-4 h-4 text-cyber-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Enhanced profile visibility
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-200">
+            <svg class="w-4 h-4 text-cyber-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Application tracking dashboard
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-400">
+            <svg class="w-4 h-4 text-slate-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            Career coaching session
+          </li>
+        </ul>
+
+        <button onclick="handleSubscribe('pro')" class="w-full btn-cyber text-white font-bold py-3 rounded-xl text-sm">
+          Get Pro
+        </button>
+        <p class="text-slate-500 text-xs text-center mt-2">Cancel anytime. No long-term commitment.</p>
+      </div>
+
+      <!-- Elite -->
+      <div class="bg-navy-800 border border-navy-700 rounded-2xl p-7 flex flex-col card-hover">
+        <div class="mb-1">
+          <span class="text-indigo-400 text-xs font-semibold uppercase tracking-wider">Elite</span>
+        </div>
+        <div class="mb-2 flex items-end gap-2">
+          <span id="elitePrice" class="text-4xl font-extrabold text-white">$39</span>
+          <span class="text-slate-400 text-sm mb-1">/ month</span>
+        </div>
+        <p class="text-slate-400 text-sm mb-1" id="eliteAnnualNote"></p>
+        <p class="text-slate-400 text-sm mb-6">For professionals who want every advantage.</p>
+
+        <ul class="space-y-3 mb-8 flex-1">
+          <li class="flex items-start gap-2.5 text-sm text-slate-300">
+            <svg class="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            <strong>Everything in Pro</strong>
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-300">
+            <svg class="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Featured profile in recruiter search
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-300">
+            <svg class="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Resume &amp; LinkedIn review (1/month)
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-300">
+            <svg class="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            1 career coaching session/month
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-300">
+            <svg class="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Early access to new job listings
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-300">
+            <svg class="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Direct recruiter messaging
+          </li>
+          <li class="flex items-start gap-2.5 text-sm text-slate-300">
+            <svg class="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Priority customer support
+          </li>
+        </ul>
+
+        <button onclick="handleSubscribe('elite')" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl text-sm transition-colors">
+          Get Elite
+        </button>
+        <p class="text-slate-500 text-xs text-center mt-2">Cancel anytime. No long-term commitment.</p>
+      </div>
+    </div>
+
+    <!-- Feature Comparison Table -->
+    <div class="mt-16">
+      <h2 class="text-xl font-bold text-white text-center mb-8">Full Feature Comparison</h2>
+      <div class="bg-navy-800 border border-navy-700 rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-navy-700">
+                <th class="text-left text-slate-400 font-medium px-6 py-4 w-1/2">Feature</th>
+                <th class="text-center text-slate-400 font-medium px-4 py-4">Free</th>
+                <th class="text-center text-cyber-400 font-semibold px-4 py-4 bg-cyber-500/5">Pro</th>
+                <th class="text-center text-indigo-400 font-semibold px-4 py-4">Elite</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-navy-700">
+              <tr>
+                <td class="px-6 py-3.5 text-slate-300">Browse job listings</td>
+                <td class="px-4 py-3.5 text-center"><span class="text-cyber-400">✓</span></td>
+                <td class="px-4 py-3.5 text-center bg-cyber-500/5"><span class="text-cyber-400">✓</span></td>
+                <td class="px-4 py-3.5 text-center"><span class="text-cyber-400">✓</span></td>
+              </tr>
+              <tr>
+                <td class="px-6 py-3.5 text-slate-300">Monthly job applications</td>
+                <td class="px-4 py-3.5 text-center text-slate-400">5</td>
+                <td class="px-4 py-3.5 text-center bg-cyber-500/5 text-cyber-400 font-semibold">Unlimited</td>
+                <td class="px-4 py-3.5 text-center text-indigo-400 font-semibold">Unlimited</td>
+              </tr>
+              <tr>
+                <td class="px-6 py-3.5 text-slate-300">One-click apply</td>
+                <td class="px-4 py-3.5 text-center text-slate-600">—</td>
+                <td class="px-4 py-3.5 text-center bg-cyber-500/5"><span class="text-cyber-400">✓</span></td>
+                <td class="px-4 py-3.5 text-center"><span class="text-cyber-400">✓</span></td>
+              </tr>
+              <tr>
+                <td class="px-6 py-3.5 text-slate-300">Job alerts</td>
+                <td class="px-4 py-3.5 text-center text-slate-400">1</td>
+                <td class="px-4 py-3.5 text-center bg-cyber-500/5 text-cyber-400 font-semibold">Unlimited</td>
+                <td class="px-4 py-3.5 text-center text-indigo-400 font-semibold">Unlimited</td>
+              </tr>
+              <tr>
+                <td class="px-6 py-3.5 text-slate-300">Application tracking</td>
+                <td class="px-4 py-3.5 text-center text-slate-600">—</td>
+                <td class="px-4 py-3.5 text-center bg-cyber-500/5"><span class="text-cyber-400">✓</span></td>
+                <td class="px-4 py-3.5 text-center"><span class="text-cyber-400">✓</span></td>
+              </tr>
+              <tr>
+                <td class="px-6 py-3.5 text-slate-300">Salary benchmarking</td>
+                <td class="px-4 py-3.5 text-center text-slate-600">—</td>
+                <td class="px-4 py-3.5 text-center bg-cyber-500/5"><span class="text-cyber-400">✓</span></td>
+                <td class="px-4 py-3.5 text-center"><span class="text-cyber-400">✓</span></td>
+              </tr>
+              <tr>
+                <td class="px-6 py-3.5 text-slate-300">Featured profile for recruiters</td>
+                <td class="px-4 py-3.5 text-center text-slate-600">—</td>
+                <td class="px-4 py-3.5 text-center bg-cyber-500/5 text-slate-600">—</td>
+                <td class="px-4 py-3.5 text-center"><span class="text-cyber-400">✓</span></td>
+              </tr>
+              <tr>
+                <td class="px-6 py-3.5 text-slate-300">Resume review</td>
+                <td class="px-4 py-3.5 text-center text-slate-600">—</td>
+                <td class="px-4 py-3.5 text-center bg-cyber-500/5 text-slate-600">—</td>
+                <td class="px-4 py-3.5 text-center text-indigo-400">1/month</td>
+              </tr>
+              <tr>
+                <td class="px-6 py-3.5 text-slate-300">Career coaching</td>
+                <td class="px-4 py-3.5 text-center text-slate-600">—</td>
+                <td class="px-4 py-3.5 text-center bg-cyber-500/5 text-slate-600">—</td>
+                <td class="px-4 py-3.5 text-center text-indigo-400">1/month</td>
+              </tr>
+              <tr>
+                <td class="px-6 py-3.5 text-slate-300">Early access to listings</td>
+                <td class="px-4 py-3.5 text-center text-slate-600">—</td>
+                <td class="px-4 py-3.5 text-center bg-cyber-500/5 text-slate-600">—</td>
+                <td class="px-4 py-3.5 text-center"><span class="text-cyber-400">✓</span></td>
+              </tr>
+              <tr>
+                <td class="px-6 py-3.5 text-slate-300">Direct recruiter messaging</td>
+                <td class="px-4 py-3.5 text-center text-slate-600">—</td>
+                <td class="px-4 py-3.5 text-center bg-cyber-500/5 text-slate-600">—</td>
+                <td class="px-4 py-3.5 text-center"><span class="text-cyber-400">✓</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="py-16 bg-navy-800/40">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+    <h2 class="text-2xl font-bold text-white text-center mb-10">Frequently Asked Questions</h2>
+
+    <div class="space-y-4" id="faqList">
+      <div class="faq-item bg-navy-800 border border-navy-700 rounded-xl overflow-hidden">
+        <button class="w-full text-left px-5 py-4 flex items-center justify-between gap-4 faq-toggle">
+          <span class="text-white font-medium text-sm">Can I cancel my subscription at any time?</span>
+          <svg class="w-5 h-5 text-slate-400 flex-shrink-0 faq-icon transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div class="faq-body hidden px-5 pb-4">
+          <p class="text-slate-400 text-sm leading-relaxed">Yes, absolutely. You can cancel your Pro or Elite subscription at any time from your account settings. You'll continue to have access until the end of your current billing period.</p>
+        </div>
+      </div>
+
+      <div class="faq-item bg-navy-800 border border-navy-700 rounded-xl overflow-hidden">
+        <button class="w-full text-left px-5 py-4 flex items-center justify-between gap-4 faq-toggle">
+          <span class="text-white font-medium text-sm">What happens after I hit the 5 application limit on the Free plan?</span>
+          <svg class="w-5 h-5 text-slate-400 flex-shrink-0 faq-icon transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div class="faq-body hidden px-5 pb-4">
+          <p class="text-slate-400 text-sm leading-relaxed">On the Free plan, you can still browse all jobs but you'll be prompted to upgrade to Pro when you try to apply beyond 5 jobs per month. Your limit resets on the 1st of each month.</p>
+        </div>
+      </div>
+
+      <div class="faq-item bg-navy-800 border border-navy-700 rounded-xl overflow-hidden">
+        <button class="w-full text-left px-5 py-4 flex items-center justify-between gap-4 faq-toggle">
+          <span class="text-white font-medium text-sm">Is there a free trial for Pro or Elite?</span>
+          <svg class="w-5 h-5 text-slate-400 flex-shrink-0 faq-icon transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div class="faq-body hidden px-5 pb-4">
+          <p class="text-slate-400 text-sm leading-relaxed">Yes! New users get a 7-day free trial of Pro when they create an account. No credit card is required for the trial.</p>
+        </div>
+      </div>
+
+      <div class="faq-item bg-navy-800 border border-navy-700 rounded-xl overflow-hidden">
+        <button class="w-full text-left px-5 py-4 flex items-center justify-between gap-4 faq-toggle">
+          <span class="text-white font-medium text-sm">How does the annual billing discount work?</span>
+          <svg class="w-5 h-5 text-slate-400 flex-shrink-0 faq-icon transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div class="faq-body hidden px-5 pb-4">
+          <p class="text-slate-400 text-sm leading-relaxed">When you choose annual billing, you pay for 9 months and get 3 months free — a 25% savings. You're billed once per year. Pro annual is $171/year ($14.25/mo), Elite annual is $351/year ($29.25/mo).</p>
+        </div>
+      </div>
+
+      <div class="faq-item bg-navy-800 border border-navy-700 rounded-xl overflow-hidden">
+        <button class="w-full text-left px-5 py-4 flex items-center justify-between gap-4 faq-toggle">
+          <span class="text-white font-medium text-sm">What does "featured profile" mean on the Elite plan?</span>
+          <svg class="w-5 h-5 text-slate-400 flex-shrink-0 faq-icon transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div class="faq-body hidden px-5 pb-4">
+          <p class="text-slate-400 text-sm leading-relaxed">Elite members appear at the top of employer candidate searches, with a special "Elite" badge on their profile. This significantly increases recruiter outreach. On average, Elite members receive 3x more recruiter messages than Free users.</p>
+        </div>
+      </div>
+
+      <div class="faq-item bg-navy-800 border border-navy-700 rounded-xl overflow-hidden">
+        <button class="w-full text-left px-5 py-4 flex items-center justify-between gap-4 faq-toggle">
+          <span class="text-white font-medium text-sm">I'm an employer. Where can I find pricing for job postings?</span>
+          <svg class="w-5 h-5 text-slate-400 flex-shrink-0 faq-icon transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div class="faq-body hidden px-5 pb-4">
+          <p class="text-slate-400 text-sm leading-relaxed">Employer pricing is on our <a href="/post-job.html#plans" class="text-cyber-400 hover:underline">Post a Job page</a>. We offer single postings starting at $149, and monthly subscription plans for teams with ongoing hiring needs.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="py-16">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+    <div class="bg-gradient-to-r from-cyber-600/20 to-indigo-600/20 border border-cyber-500/20 rounded-2xl p-10">
+      <h2 class="text-2xl font-bold text-white mb-3">Start your free account today</h2>
+      <p class="text-slate-400 mb-6">No credit card required. Upgrade anytime.</p>
+      <button onclick="openModal('registerModal')" class="btn-cyber text-white font-bold px-10 py-3 rounded-xl">Create Free Account</button>
+    </div>
+  </div>
+</section>
+
+<script>
+function setBilling(type) {
+  const isAnnual = type === 'annual';
+  document.getElementById('monthlyToggle').className = 'px-5 py-2 rounded-lg text-sm font-semibold transition-all ' + (!isAnnual ? 'bg-cyber-600 text-white' : 'text-slate-400 hover:text-white');
+  document.getElementById('annualToggle').className = 'px-5 py-2 rounded-lg text-sm font-semibold transition-all ' + (isAnnual ? 'bg-cyber-600 text-white' : 'text-slate-400 hover:text-white') + ' flex items-center gap-1';
+
+  document.getElementById('proPrice').textContent = isAnnual ? '$14' : '$19';
+  document.getElementById('elitePrice').textContent = isAnnual ? '$29' : '$39';
+  document.getElementById('proAnnualNote').textContent = isAnnual ? 'Billed $171/year — save $57' : '';
+  document.getElementById('eliteAnnualNote').textContent = isAnnual ? 'Billed $351/year — save $117' : '';
+}
+
+function handleSubscribe(plan) {
+  openModal('registerModal');
+  showToast('Create an account to start your 7-day free ' + plan.charAt(0).toUpperCase() + plan.slice(1) + ' trial!');
+}
+
+// FAQ accordion
+document.querySelectorAll('.faq-toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const body = btn.nextElementSibling;
+    const icon = btn.querySelector('.faq-icon');
+    const isOpen = !body.classList.contains('hidden');
+    // Close all
+    document.querySelectorAll('.faq-body').forEach(b => b.classList.add('hidden'));
+    document.querySelectorAll('.faq-icon').forEach(i => i.style.transform = '');
+    // Open clicked if it was closed
+    if (!isOpen) {
+      body.classList.remove('hidden');
+      icon.style.transform = 'rotate(180deg)';
+    }
+  });
+});
+</script>

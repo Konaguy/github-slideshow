@@ -1,0 +1,405 @@
+---
+layout: jobsite
+title: "Browse Cybersecurity & Tech Jobs"
+description: "Search and filter thousands of cybersecurity and technology jobs. Find your perfect role in AppSec, Cloud Security, SOC, Red Team, and more."
+extra_js: "/assets/js/jobsite.js"
+---
+
+<section class="py-8 bg-navy-800/40 border-b border-navy-700">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- Search Bar -->
+    <div class="flex flex-col md:flex-row gap-3">
+      <div class="flex-1 flex items-center gap-3 bg-navy-800 border border-navy-600 rounded-xl px-4 py-3 focus-within:border-cyber-500 transition-colors">
+        <svg class="w-5 h-5 text-slate-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input id="searchInput" type="text" placeholder="Job title, company, skill, or keyword..." class="bg-transparent text-white placeholder-slate-500 text-sm w-full focus:outline-none" />
+      </div>
+      <div class="flex items-center gap-3 bg-navy-800 border border-navy-600 rounded-xl px-4 py-3 md:w-52 focus-within:border-cyber-500 transition-colors">
+        <svg class="w-5 h-5 text-slate-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        <input id="locationInput" type="text" placeholder="Location or Remote" class="bg-transparent text-white placeholder-slate-500 text-sm w-full focus:outline-none" />
+      </div>
+      <button onclick="applyFilters()" class="btn-cyber text-white font-semibold px-8 py-3 rounded-xl text-sm">
+        Search
+      </button>
+    </div>
+
+    <!-- Active Filters / Results Count -->
+    <div class="flex items-center justify-between mt-4">
+      <div id="resultsCount" class="text-slate-400 text-sm">Showing <span class="text-white font-medium" id="jobCount">12</span> jobs</div>
+      <div class="flex items-center gap-2">
+        <span class="text-slate-500 text-xs">Sort by:</span>
+        <select id="sortSelect" onchange="applyFilters()" class="bg-navy-800 border border-navy-600 text-slate-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyber-500">
+          <option value="recent">Most Recent</option>
+          <option value="salary-high">Salary: High to Low</option>
+          <option value="salary-low">Salary: Low to High</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="flex flex-col lg:flex-row gap-8">
+
+    <!-- Sidebar Filters -->
+    <aside class="lg:w-64 flex-shrink-0">
+      <div class="bg-navy-800 border border-navy-700 rounded-2xl p-5 sticky top-24">
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="text-white font-semibold text-sm">Filters</h3>
+          <button onclick="clearFilters()" class="text-cyber-400 text-xs hover:underline">Clear all</button>
+        </div>
+
+        <!-- Category Filter -->
+        <div class="mb-6">
+          <h4 class="text-slate-300 text-xs font-semibold uppercase tracking-wider mb-3">Category</h4>
+          <div class="space-y-2" id="categoryFilters">
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="all" class="filter-checkbox accent-cyan-500" checked onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">All Categories</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="penetration-testing" class="filter-checkbox cat-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">Penetration Testing</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="cloud-security" class="filter-checkbox cat-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">Cloud Security</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="soc" class="filter-checkbox cat-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">SOC / Analyst</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="devsecops" class="filter-checkbox cat-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">DevSecOps</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="appsec" class="filter-checkbox cat-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">Application Security</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="malware-analysis" class="filter-checkbox cat-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">Malware Analysis</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="threat-intelligence" class="filter-checkbox cat-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">Threat Intelligence</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="grc" class="filter-checkbox cat-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">GRC / Compliance</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="iam" class="filter-checkbox cat-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">IAM</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Job Type -->
+        <div class="mb-6 border-t border-navy-700 pt-5">
+          <h4 class="text-slate-300 text-xs font-semibold uppercase tracking-wider mb-3">Job Type</h4>
+          <div class="space-y-2">
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="Full-time" class="filter-checkbox type-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">Full-time</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="Part-time" class="filter-checkbox type-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">Part-time</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="Contract" class="filter-checkbox type-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">Contract</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Experience Level -->
+        <div class="mb-6 border-t border-navy-700 pt-5">
+          <h4 class="text-slate-300 text-xs font-semibold uppercase tracking-wider mb-3">Experience Level</h4>
+          <div class="space-y-2">
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="Junior" class="filter-checkbox level-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">Junior (0–3 yrs)</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="Mid" class="filter-checkbox level-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">Mid-level (3–6 yrs)</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="Senior" class="filter-checkbox level-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">Senior (6+ yrs)</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="Lead" class="filter-checkbox level-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">Lead / Manager</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Remote -->
+        <div class="border-t border-navy-700 pt-5">
+          <h4 class="text-slate-300 text-xs font-semibold uppercase tracking-wider mb-3">Work Mode</h4>
+          <div class="space-y-2">
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="Fully Remote" class="filter-checkbox remote-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">Fully Remote</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="Remote OK" class="filter-checkbox remote-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">Remote OK</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="Hybrid" class="filter-checkbox remote-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">Hybrid</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="On-site" class="filter-checkbox remote-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="text-slate-400 text-sm group-hover:text-white transition-colors">On-site</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Job Alert CTA -->
+      <div class="mt-4 bg-cyber-500/10 border border-cyber-500/20 rounded-2xl p-5 text-center">
+        <svg class="w-8 h-8 text-cyber-400 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+        </svg>
+        <p class="text-white font-semibold text-sm mb-1">Get Job Alerts</p>
+        <p class="text-slate-400 text-xs mb-3">Never miss a relevant opening</p>
+        <button onclick="openModal('registerModal')" class="btn-cyber text-white text-xs font-semibold px-4 py-2 rounded-lg w-full">Set Up Alerts</button>
+      </div>
+    </aside>
+
+    <!-- Job Listings -->
+    <main class="flex-1 min-w-0">
+      <div id="jobListings" class="space-y-4">
+        <!-- Jobs rendered by JS -->
+      </div>
+
+      <!-- No Results -->
+      <div id="noResults" class="hidden text-center py-16">
+        <svg class="w-16 h-16 text-slate-700 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <h3 class="text-white font-semibold text-lg mb-2">No jobs found</h3>
+        <p class="text-slate-400 text-sm">Try adjusting your search or filters</p>
+        <button onclick="clearFilters()" class="mt-4 btn-cyber text-white text-sm font-semibold px-6 py-2 rounded-lg">Clear Filters</button>
+      </div>
+
+      <!-- Load More -->
+      <div id="loadMoreBtn" class="text-center mt-8">
+        <button onclick="showToast('All jobs loaded! Subscribe to Pro for instant alerts on new listings.')" class="bg-navy-800 border border-navy-700 hover:border-cyber-500/50 text-slate-300 hover:text-white font-medium px-8 py-3 rounded-xl text-sm transition-all">
+          Load More Jobs
+        </button>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Job Detail Modal -->
+<div id="jobModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+  <div class="bg-navy-800 border border-navy-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div id="jobModalContent" class="p-6 md:p-8">
+      <!-- Filled by JS -->
+    </div>
+  </div>
+</div>
+
+<script>
+// Job data embedded from Jekyll
+const JOBS = [
+  {% for job in site.data.jobs %}
+  {
+    id: {{ job.id }},
+    title: {{ job.title | jsonify }},
+    company: {{ job.company | jsonify }},
+    company_logo: {{ job.company_logo | jsonify }},
+    location: {{ job.location | jsonify }},
+    remote: {{ job.remote | jsonify }},
+    type: {{ job.type | jsonify }},
+    category: {{ job.category | jsonify }},
+    level: {{ job.level | jsonify }},
+    salary_min: {{ job.salary_min }},
+    salary_max: {{ job.salary_max }},
+    tags: {{ job.tags | jsonify }},
+    featured: {{ job.featured }},
+    posted_days_ago: {{ job.posted_days_ago }},
+    description: {{ job.description | jsonify }}
+  }{% unless forloop.last %},{% endunless %}
+  {% endfor %}
+];
+
+let filteredJobs = [...JOBS];
+
+function renderJobs(jobs) {
+  const container = document.getElementById('jobListings');
+  const noResults = document.getElementById('noResults');
+  const loadMoreBtn = document.getElementById('loadMoreBtn');
+  document.getElementById('jobCount').textContent = jobs.length;
+
+  if (jobs.length === 0) {
+    container.innerHTML = '';
+    noResults.classList.remove('hidden');
+    loadMoreBtn.classList.add('hidden');
+    return;
+  }
+  noResults.classList.add('hidden');
+  loadMoreBtn.classList.remove('hidden');
+
+  container.innerHTML = jobs.map(job => `
+    <div class="bg-navy-800 border border-navy-700 rounded-xl p-5 card-hover cursor-pointer" onclick="openJobModal(${job.id})">
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 bg-navy-700 text-cyan-400 border border-navy-600">
+          ${job.company_logo}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-start justify-between gap-2 flex-wrap">
+            <div>
+              <h3 class="text-white font-semibold text-sm leading-tight">${job.title}</h3>
+              <p class="text-slate-400 text-xs mt-0.5">${job.company}</p>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              ${job.featured ? '<span class="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-xs font-semibold px-2 py-0.5 rounded-full">Featured</span>' : ''}
+              <span class="bg-navy-700 text-slate-400 text-xs px-2 py-0.5 rounded-full border border-navy-600">${job.level}</span>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3 mt-3 text-xs text-slate-400">
+            <span class="flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              ${job.location}
+            </span>
+            <span class="px-2 py-0.5 rounded-full ${job.remote === 'Fully Remote' ? 'bg-emerald-500/10 text-emerald-400' : job.remote === 'Remote OK' ? 'bg-blue-500/10 text-blue-400' : 'bg-orange-500/10 text-orange-400'}">${job.remote}</span>
+            <span>${job.type}</span>
+            <span class="text-cyan-400 font-semibold">$${Math.round(job.salary_min/1000)}k–$${Math.round(job.salary_max/1000)}k/yr</span>
+          </div>
+
+          <div class="flex flex-wrap gap-1.5 mt-3">
+            ${job.tags.slice(0, 5).map(t => `<span class="bg-navy-900 text-slate-400 text-xs px-2 py-0.5 rounded-md border border-navy-600">${t}</span>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="mt-4 pt-4 border-t border-navy-700 flex items-center justify-between">
+        <span class="text-slate-500 text-xs">${job.posted_days_ago} day${job.posted_days_ago !== 1 ? 's' : ''} ago</span>
+        <button class="btn-cyber text-white text-xs font-semibold px-4 py-1.5 rounded-lg" onclick="event.stopPropagation(); openJobModal(${job.id})">View &amp; Apply</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function applyFilters() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const loc = document.getElementById('locationInput').value.toLowerCase();
+  const sort = document.getElementById('sortSelect').value;
+
+  const catChecks = [...document.querySelectorAll('.cat-check:checked')].map(c => c.value);
+  const typeChecks = [...document.querySelectorAll('.type-check:checked')].map(c => c.value);
+  const levelChecks = [...document.querySelectorAll('.level-check:checked')].map(c => c.value);
+  const remoteChecks = [...document.querySelectorAll('.remote-check:checked')].map(c => c.value);
+
+  let jobs = JOBS.filter(job => {
+    if (q && !([job.title, job.company, job.description, ...job.tags].join(' ').toLowerCase().includes(q))) return false;
+    if (loc && !job.location.toLowerCase().includes(loc) && !(loc.includes('remote') && job.remote !== 'On-site')) return false;
+    if (catChecks.length && !catChecks.includes(job.category)) return false;
+    if (typeChecks.length && !typeChecks.includes(job.type)) return false;
+    if (levelChecks.length && !levelChecks.includes(job.level)) return false;
+    if (remoteChecks.length && !remoteChecks.includes(job.remote)) return false;
+    return true;
+  });
+
+  if (sort === 'salary-high') jobs.sort((a,b) => b.salary_max - a.salary_max);
+  else if (sort === 'salary-low') jobs.sort((a,b) => a.salary_min - b.salary_min);
+  else jobs.sort((a,b) => a.posted_days_ago - b.posted_days_ago);
+
+  filteredJobs = jobs;
+  renderJobs(jobs);
+}
+
+function clearFilters() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('locationInput').value = '';
+  document.querySelectorAll('.filter-checkbox').forEach(c => c.checked = false);
+  applyFilters();
+}
+
+function openJobModal(id) {
+  const job = JOBS.find(j => j.id === id);
+  if (!job) return;
+  document.getElementById('jobModalContent').innerHTML = `
+    <div class="flex items-start justify-between gap-4 mb-6">
+      <div class="flex items-start gap-4">
+        <div class="w-14 h-14 rounded-xl flex items-center justify-center font-bold text-lg bg-navy-700 text-cyan-400 border border-navy-600 flex-shrink-0">${job.company_logo}</div>
+        <div>
+          <h2 class="text-white font-bold text-xl">${job.title}</h2>
+          <p class="text-slate-400 text-sm mt-0.5">${job.company}</p>
+        </div>
+      </div>
+      <button onclick="closeModal('jobModal')" class="text-slate-400 hover:text-white flex-shrink-0">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div class="bg-navy-900 rounded-xl p-3 text-center border border-navy-700">
+        <div class="text-slate-500 text-xs mb-1">Location</div>
+        <div class="text-white text-sm font-medium">${job.location}</div>
+      </div>
+      <div class="bg-navy-900 rounded-xl p-3 text-center border border-navy-700">
+        <div class="text-slate-500 text-xs mb-1">Work Mode</div>
+        <div class="text-cyan-400 text-sm font-medium">${job.remote}</div>
+      </div>
+      <div class="bg-navy-900 rounded-xl p-3 text-center border border-navy-700">
+        <div class="text-slate-500 text-xs mb-1">Salary</div>
+        <div class="text-white text-sm font-medium">$${Math.round(job.salary_min/1000)}k–$${Math.round(job.salary_max/1000)}k</div>
+      </div>
+      <div class="bg-navy-900 rounded-xl p-3 text-center border border-navy-700">
+        <div class="text-slate-500 text-xs mb-1">Level</div>
+        <div class="text-white text-sm font-medium">${job.level}</div>
+      </div>
+    </div>
+
+    <div class="mb-6">
+      <h3 class="text-white font-semibold text-sm mb-2">About the Role</h3>
+      <p class="text-slate-400 text-sm leading-relaxed">${job.description}</p>
+    </div>
+
+    <div class="mb-6">
+      <h3 class="text-white font-semibold text-sm mb-3">Required Skills</h3>
+      <div class="flex flex-wrap gap-2">
+        ${job.tags.map(t => `<span class="bg-navy-900 border border-navy-600 text-slate-300 text-xs px-3 py-1 rounded-full">${t}</span>`).join('')}
+      </div>
+    </div>
+
+    <div class="border-t border-navy-700 pt-5 flex flex-col sm:flex-row gap-3">
+      <button onclick="handleApply()" class="flex-1 btn-cyber text-white font-semibold py-3 rounded-xl text-sm">Apply Now</button>
+      <button onclick="showToast('Job saved to your profile!')" class="flex-1 bg-navy-700 hover:bg-navy-600 border border-navy-600 text-slate-300 font-semibold py-3 rounded-xl text-sm transition-colors">Save Job</button>
+    </div>
+    <p class="text-slate-500 text-xs text-center mt-3">Posted ${job.posted_days_ago} day${job.posted_days_ago !== 1 ? 's' : ''} ago &bull; ${job.type}</p>
+  `;
+  openModal('jobModal');
+}
+
+function handleApply() {
+  closeModal('jobModal');
+  openModal('registerModal');
+}
+
+// URL param search
+window.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('q')) document.getElementById('searchInput').value = params.get('q');
+  if (params.get('loc')) document.getElementById('locationInput').value = params.get('loc');
+  applyFilters();
+});
+
+document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') applyFilters(); });
+document.getElementById('locationInput').addEventListener('keydown', e => { if (e.key === 'Enter') applyFilters(); });
+document.getElementById('jobModal').addEventListener('click', function(e) { if (e.target === this) closeModal('jobModal'); });
+</script>

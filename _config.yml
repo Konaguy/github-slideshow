@@ -16,10 +16,10 @@ kramdown:
 plugins:
   - jemoji
 
-## personalize your slide show
-title:       github-slideshow
-author:      GitHubTeacher
-description: A fun activity for learning Git and GitHub.
+## CyberTalent Job Board
+title:       CyberTalent
+author:      CyberTalent
+description: The premier job board for cybersecurity and technology professionals.
 
 sass:
   style:     :compressed
