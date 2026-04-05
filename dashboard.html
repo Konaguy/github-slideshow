@@ -1,0 +1,506 @@
+---
+layout: jobsite
+title: "My Dashboard — Application Tracker"
+description: "Track your cybersecurity job applications with career-ops powered evaluation scoring and pipeline management."
+---
+
+<style>
+  /* career-ops status pill colours */
+  .status-applied    { background:rgba(6,182,212,.12);  color:#22d3ee; border-color:rgba(6,182,212,.25); }
+  .status-responded  { background:rgba(99,102,241,.12); color:#818cf8; border-color:rgba(99,102,241,.25); }
+  .status-interview  { background:rgba(245,158,11,.12); color:#fbbf24; border-color:rgba(245,158,11,.25); }
+  .status-offer      { background:rgba(16,185,129,.12); color:#34d399; border-color:rgba(16,185,129,.25); }
+  .status-evaluated  { background:rgba(168,85,247,.12); color:#c084fc; border-color:rgba(168,85,247,.25); }
+  .status-rejected   { background:rgba(239,68,68,.12);  color:#f87171; border-color:rgba(239,68,68,.25); }
+  .status-discarded  { background:rgba(100,116,139,.12);color:#94a3b8; border-color:rgba(100,116,139,.25); }
+  .status-skip       { background:rgba(71,85,105,.12);  color:#64748b; border-color:rgba(71,85,105,.25); }
+
+  .tab-active { background:rgba(6,182,212,.15); color:#22d3ee; border-bottom:2px solid #06b6d4; }
+
+  /* dim score bar */
+  .dim-bar { height:4px; border-radius:2px; transition:width .4s ease; }
+</style>
+
+<!-- Page Header -->
+<section class="py-8 border-b border-navy-700 bg-navy-800/40">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <div class="w-6 h-6 ops-gradient rounded flex items-center justify-center flex-shrink-0">
+            <svg class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+          </div>
+          <h1 class="text-white font-bold text-xl font-grotesk">Application Dashboard</h1>
+          <span class="text-slate-500 text-xs border border-slate-700 rounded px-2 py-0.5">powered by career-ops</span>
+        </div>
+        <p class="text-slate-400 text-sm">Track every application. Evaluate every role. Never miss a follow-up.</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="openModal('addAppModal')" class="btn-cyber text-white font-semibold px-5 py-2 rounded-xl text-sm flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Add Application
+        </button>
+        <a href="/listings.html" class="bg-navy-700 border border-navy-600 hover:border-cyber-500/50 text-slate-300 hover:text-white font-medium px-5 py-2 rounded-xl text-sm transition-all">Browse Jobs</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Stats Bar -->
+<section class="border-b border-navy-700">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+    <div class="grid grid-cols-4 md:grid-cols-8 gap-3">
+      <div class="bg-navy-800 border border-navy-700 rounded-xl p-3 text-center col-span-2 md:col-span-1">
+        <div id="stat-total" class="text-xl font-bold text-white font-grotesk">0</div>
+        <div class="text-slate-500 text-xs mt-0.5">Total</div>
+      </div>
+      <div class="bg-navy-800 border border-cyan-500/20 rounded-xl p-3 text-center">
+        <div id="stat-applied" class="text-xl font-bold text-cyan-400 font-grotesk">0</div>
+        <div class="text-slate-500 text-xs mt-0.5">Applied</div>
+      </div>
+      <div class="bg-navy-800 border border-indigo-500/20 rounded-xl p-3 text-center">
+        <div id="stat-responded" class="text-xl font-bold text-indigo-400 font-grotesk">0</div>
+        <div class="text-slate-500 text-xs mt-0.5">Responded</div>
+      </div>
+      <div class="bg-navy-800 border border-amber-500/20 rounded-xl p-3 text-center">
+        <div id="stat-interview" class="text-xl font-bold text-amber-400 font-grotesk">0</div>
+        <div class="text-slate-500 text-xs mt-0.5">Interview</div>
+      </div>
+      <div class="bg-navy-800 border border-emerald-500/20 rounded-xl p-3 text-center">
+        <div id="stat-offer" class="text-xl font-bold text-emerald-400 font-grotesk">0</div>
+        <div class="text-slate-500 text-xs mt-0.5">Offer</div>
+      </div>
+      <div class="bg-navy-800 border border-purple-500/20 rounded-xl p-3 text-center">
+        <div id="stat-evaluated" class="text-xl font-bold text-purple-400 font-grotesk">0</div>
+        <div class="text-slate-500 text-xs mt-0.5">Evaluated</div>
+      </div>
+      <div class="bg-navy-800 border border-red-500/20 rounded-xl p-3 text-center">
+        <div id="stat-rejected" class="text-xl font-bold text-red-400 font-grotesk">0</div>
+        <div class="text-slate-500 text-xs mt-0.5">Rejected</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Main Content -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <!-- Tab Bar (career-ops canonical statuses) -->
+  <div class="flex items-center gap-1 overflow-x-auto pb-2 mb-6 border-b border-navy-700">
+    <button class="dash-tab tab-active text-xs font-semibold px-4 py-2 rounded-t-lg whitespace-nowrap transition-all" data-status="all" onclick="setTab('all')">All</button>
+    <button class="dash-tab text-slate-400 hover:text-white text-xs font-semibold px-4 py-2 rounded-t-lg whitespace-nowrap transition-all" data-status="Applied" onclick="setTab('Applied')">Applied</button>
+    <button class="dash-tab text-slate-400 hover:text-white text-xs font-semibold px-4 py-2 rounded-t-lg whitespace-nowrap transition-all" data-status="Responded" onclick="setTab('Responded')">Responded</button>
+    <button class="dash-tab text-slate-400 hover:text-white text-xs font-semibold px-4 py-2 rounded-t-lg whitespace-nowrap transition-all" data-status="Interview" onclick="setTab('Interview')">Interview</button>
+    <button class="dash-tab text-slate-400 hover:text-white text-xs font-semibold px-4 py-2 rounded-t-lg whitespace-nowrap transition-all" data-status="Offer" onclick="setTab('Offer')">Offer</button>
+    <button class="dash-tab text-slate-400 hover:text-white text-xs font-semibold px-4 py-2 rounded-t-lg whitespace-nowrap transition-all" data-status="Evaluated" onclick="setTab('Evaluated')">Evaluated</button>
+    <button class="dash-tab text-slate-400 hover:text-white text-xs font-semibold px-4 py-2 rounded-t-lg whitespace-nowrap transition-all" data-status="archived" onclick="setTab('archived')">
+      Archived <span class="text-slate-600 font-normal">(Rejected / Discarded)</span>
+    </button>
+  </div>
+
+  <!-- Applications Grid -->
+  <div id="appGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+
+  <!-- Empty state -->
+  <div id="emptyState" class="hidden text-center py-20">
+    <div class="w-20 h-20 ops-gradient rounded-2xl flex items-center justify-center mx-auto mb-4 opacity-60">
+      <svg class="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+      </svg>
+    </div>
+    <h3 class="text-white font-bold text-lg font-grotesk mb-2">No applications here yet</h3>
+    <p class="text-slate-400 text-sm mb-6">Browse jobs and click "Track Application" to add them here.</p>
+    <a href="/listings.html" class="btn-cyber text-white font-semibold px-6 py-3 rounded-xl text-sm">Browse Jobs</a>
+  </div>
+</div>
+
+<!-- Evaluation Detail Modal -->
+<div id="evalModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+  <div class="bg-navy-800 border border-navy-700 rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto shadow-2xl">
+    <div id="evalModalContent" class="p-6 md:p-8"></div>
+  </div>
+</div>
+
+<!-- Add Application Modal -->
+<div id="addAppModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+  <div class="bg-navy-800 border border-navy-700 rounded-2xl w-full max-w-md shadow-2xl">
+    <div class="p-6">
+      <div class="flex items-center justify-between mb-5">
+        <h2 class="text-white font-bold text-lg font-grotesk">Add Application</h2>
+        <button onclick="closeModal('addAppModal')" class="text-slate-400 hover:text-white">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <form onsubmit="addApplication(event)" class="space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-slate-400 text-xs block mb-1">Company *</label>
+            <input id="newCompany" type="text" required placeholder="e.g. CrowdStrike" class="w-full bg-navy-900 border border-navy-600 text-white placeholder-slate-600 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyber-500" />
+          </div>
+          <div>
+            <label class="text-slate-400 text-xs block mb-1">Role *</label>
+            <input id="newRole" type="text" required placeholder="e.g. Sr. Pen Tester" class="w-full bg-navy-900 border border-navy-600 text-white placeholder-slate-600 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyber-500" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-slate-400 text-xs block mb-1">Archetype</label>
+            <select id="newArchetype" class="w-full bg-navy-900 border border-navy-600 text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyber-500">
+              <option>Red Team</option>
+              <option>Blue Team</option>
+              <option>AppSec</option>
+              <option>CloudSec</option>
+              <option>GRC</option>
+              <option>SecEng</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-slate-400 text-xs block mb-1">Status</label>
+            <select id="newStatus" class="w-full bg-navy-900 border border-navy-600 text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyber-500">
+              <option>Applied</option>
+              <option>Responded</option>
+              <option>Interview</option>
+              <option>Offer</option>
+              <option>Evaluated</option>
+              <option>Rejected</option>
+              <option>Discarded</option>
+              <option>SKIP</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-slate-400 text-xs block mb-1">Salary Range</label>
+            <input id="newSalary" type="text" placeholder="e.g. $120k–$160k" class="w-full bg-navy-900 border border-navy-600 text-white placeholder-slate-600 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyber-500" />
+          </div>
+          <div>
+            <label class="text-slate-400 text-xs block mb-1">AI Score (1–5)</label>
+            <input id="newScore" type="number" min="1" max="5" step="0.1" placeholder="e.g. 4.2" class="w-full bg-navy-900 border border-navy-600 text-white placeholder-slate-600 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyber-500" />
+          </div>
+        </div>
+        <div>
+          <label class="text-slate-400 text-xs block mb-1">Notes</label>
+          <textarea id="newNotes" rows="2" placeholder="Key requirements, recruiter name, next steps..." class="w-full bg-navy-900 border border-navy-600 text-white placeholder-slate-600 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyber-500 resize-none"></textarea>
+        </div>
+        <button type="submit" class="w-full btn-cyber text-white font-semibold py-3 rounded-xl text-sm">Add to Pipeline</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// career-ops canonical statuses
+const STATUSES = ['Applied','Responded','Interview','Offer','Evaluated','Rejected','Discarded','SKIP'];
+
+// career-ops 10 evaluation dimensions
+const EVAL_DIMS = [
+  { name: 'Archetype Detection',         desc: 'Classifies role into security archetype (Red/Blue/AppSec/CloudSec/GRC/SecEng).' },
+  { name: 'CV-to-JD Mapping',            desc: 'Matches your CV bullets to JD requirements; identifies hard blockers vs nice-to-haves.' },
+  { name: 'Level Assessment',            desc: 'Compares detected JD seniority against your natural level for this archetype.' },
+  { name: 'Compensation & Market Demand',desc: 'Benchmarks salary against current market rates and company reputation.' },
+  { name: 'CV Personalization Strategy', desc: 'Identifies top 5 CV edits + 5 LinkedIn changes to maximise ATS match.' },
+  { name: 'Interview Prep (STAR+R)',      desc: '6–10 STAR+Reflection stories mapped directly to JD requirements.' },
+  { name: 'Positioning Strategy',        desc: 'Framing for "selling senior without lying" or handling level mismatches.' },
+  { name: 'Gap Mitigation Plans',        desc: 'Concrete actions: cover letter angles, quick portfolio projects, certs to mention.' },
+  { name: 'Red-Flag Handling',           desc: 'Pre-prepared responses to sensitive interview questions (gaps, level, comp).' },
+  { name: 'Case Study Selection',        desc: 'Which portfolio project to present and how to frame it for this role.' }
+];
+
+// Archetype CSS helper
+function archClass(arch) {
+  return { 'Red Team':'arch-redteam','Blue Team':'arch-blueteam','AppSec':'arch-appsec','CloudSec':'arch-cloudsec','GRC':'arch-grc','SecEng':'arch-seceng' }[arch] || 'arch-seceng';
+}
+function statusClass(s) {
+  return { Applied:'status-applied', Responded:'status-responded', Interview:'status-interview', Offer:'status-offer', Evaluated:'status-evaluated', Rejected:'status-rejected', Discarded:'status-discarded', SKIP:'status-skip' }[s] || 'status-applied';
+}
+function gradeFromScore(s) {
+  if (s >= 4.5) return 'A';
+  if (s >= 3.5) return 'B';
+  if (s >= 2.5) return 'C';
+  return 'D';
+}
+function gradeColor(g) {
+  return { A:'#34d399', B:'#60a5fa', C:'#fbbf24', D:'#f87171' }[g] || '#60a5fa';
+}
+function formatDate(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = Math.round((now - d) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  if (diff < 7) return `${diff} days ago`;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// Deterministic per-app eval scores
+function evalScores(app) {
+  const base = app.score || 3.5;
+  const seed = app.id;
+  return EVAL_DIMS.map((_, i) => {
+    const noise = ((seed * (i + 7) * 13) % 10) / 10 - 0.5;
+    return Math.min(5, Math.max(1, +(base + noise * 0.8).toFixed(1)));
+  });
+}
+
+// --- Demo seed data (career-ops pipeline) ---
+const SEED_APPS = [
+  { id:1, company:'CrowdStrike', role:'Senior Penetration Tester', archetype:'Red Team',  status:'Interview',  score:4.8, salary:'$130k–$170k', date:'2025-03-28', notes:'Hiring manager: Sarah Chen. Round 2 next week. Strong OSCP fit.' },
+  { id:2, company:'Google',      role:'Security Software Engineer', archetype:'SecEng',   status:'Offer',      score:4.9, salary:'$175k–$250k', date:'2025-03-20', notes:'Offer received! $195k base + RSUs. Evaluating vs. Stripe.' },
+  { id:3, company:'Stripe',      role:'DevSecOps Engineer',         archetype:'SecEng',   status:'Evaluated',  score:4.2, salary:'$140k–$185k', date:'2025-03-15', notes:'Final eval: strong fit on CI/CD, weaker on Kubernetes hardening. Decide by Friday.' },
+  { id:4, company:'Palo Alto',   role:'Cloud Security Architect',   archetype:'CloudSec', status:'Responded',  score:4.5, salary:'$150k–$200k', date:'2025-03-25', notes:'Recruiter Priya reached out. Screening call scheduled 4/8.' },
+  { id:5, company:'Mandiant',    role:'SOC Analyst (Tier 2)',        archetype:'Blue Team',status:'Applied',    score:3.9, salary:'$85k–$115k',  date:'2025-04-01', notes:'Applied via LinkedIn. Waiting for ATS response.' },
+  { id:6, company:'Shopify',     role:'Application Security Engineer',archetype:'AppSec', status:'Applied',    score:3.7, salary:'$110k–$145k', date:'2025-04-02', notes:'Remote-first. Good culture fit. Weak on Ruby — need to prep.' },
+  { id:7, company:'Databricks',  role:'GRC Analyst',                 archetype:'GRC',     status:'Rejected',   score:3.8, salary:'$95k–$125k',  date:'2025-03-10', notes:'Rejected after HM screen. Preferred more SOC 2 hands-on audit experience.' },
+  { id:8, company:'FireEye',     role:'Malware Analyst',             archetype:'Red Team', status:'Discarded',  score:4.6, salary:'$120k–$155k', date:'2025-03-05', notes:'Discarded — role moved to internal candidate. Keep for future.' },
+];
+
+// Load apps from localStorage or seed
+function loadApps() {
+  const stored = localStorage.getItem('ct_applications');
+  return stored ? JSON.parse(stored) : SEED_APPS;
+}
+function saveApps(apps) {
+  localStorage.setItem('ct_applications', JSON.stringify(apps));
+}
+
+let apps = loadApps();
+let currentTab = 'all';
+
+function updateStats() {
+  const counts = {};
+  STATUSES.forEach(s => counts[s] = 0);
+  apps.forEach(a => { if (counts[a.status] !== undefined) counts[a.status]++; });
+
+  document.getElementById('stat-total').textContent = apps.length;
+  document.getElementById('stat-applied').textContent = counts.Applied;
+  document.getElementById('stat-responded').textContent = counts.Responded;
+  document.getElementById('stat-interview').textContent = counts.Interview;
+  document.getElementById('stat-offer').textContent = counts.Offer;
+  document.getElementById('stat-evaluated').textContent = counts.Evaluated;
+  document.getElementById('stat-rejected').textContent = counts.Rejected;
+}
+
+function setTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.dash-tab').forEach(t => {
+    if (t.dataset.status === tab) {
+      t.classList.add('tab-active');
+      t.classList.remove('text-slate-400','hover:text-white');
+    } else {
+      t.classList.remove('tab-active');
+      t.classList.add('text-slate-400','hover:text-white');
+    }
+  });
+  renderApps();
+}
+
+function renderApps() {
+  const grid = document.getElementById('appGrid');
+  const empty = document.getElementById('emptyState');
+
+  let filtered = apps;
+  if (currentTab === 'archived') {
+    filtered = apps.filter(a => ['Rejected','Discarded','SKIP'].includes(a.status));
+  } else if (currentTab !== 'all') {
+    filtered = apps.filter(a => a.status === currentTab);
+  }
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  grid.innerHTML = filtered.map(app => {
+    const grade = gradeFromScore(app.score || 3.5);
+    const gc = gradeColor(grade);
+    const sc = statusClass(app.status);
+    const ac = archClass(app.archetype);
+    const initials = app.company.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+
+    return `
+    <div class="bg-navy-800 border border-navy-700 rounded-2xl p-5 card-hover flex flex-col">
+      <div class="flex items-start gap-3 mb-4">
+        <div class="w-11 h-11 rounded-xl bg-navy-700 border border-navy-600 flex items-center justify-center text-cyber-400 font-bold text-sm flex-shrink-0">${initials}</div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <h3 class="text-white font-semibold text-sm font-grotesk truncate">${app.role}</h3>
+            <span class="text-xs font-bold" style="color:${gc}">${grade} <span class="font-normal text-slate-500">${app.score}</span></span>
+          </div>
+          <p class="text-slate-400 text-xs mt-0.5">${app.company}</p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-2 mb-4">
+        <span class="border text-xs font-semibold px-2 py-0.5 rounded-full ${sc}">${app.status}</span>
+        <span class="border text-xs font-semibold px-2 py-0.5 rounded-full ${ac}">${app.archetype}</span>
+        ${app.salary ? `<span class="text-xs text-slate-400">${app.salary}</span>` : ''}
+      </div>
+
+      ${app.notes ? `<p class="text-slate-500 text-xs mb-4 leading-relaxed line-clamp-2">${app.notes}</p>` : ''}
+
+      <div class="mt-auto pt-3 border-t border-navy-700 flex items-center justify-between gap-2">
+        <span class="text-slate-600 text-xs">${formatDate(app.date)}</span>
+        <div class="flex items-center gap-2">
+          <select class="bg-navy-900 border border-navy-700 text-slate-300 text-xs rounded-lg px-2 py-1 focus:outline-none focus:border-cyber-500" onchange="updateStatus(${app.id}, this.value)">
+            ${STATUSES.map(s => `<option ${s === app.status ? 'selected' : ''} value="${s}">${s}</option>`).join('')}
+          </select>
+          <button onclick="openEvalModal(${app.id})" class="ops-gradient text-white text-xs font-semibold px-3 py-1 rounded-lg whitespace-nowrap">Evaluate</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateStatus(id, newStatus) {
+  apps = apps.map(a => a.id === id ? { ...a, status: newStatus } : a);
+  saveApps(apps);
+  updateStats();
+  renderApps();
+  showToast(`Status updated to "${newStatus}"`);
+}
+
+function addApplication(e) {
+  e.preventDefault();
+  const score = parseFloat(document.getElementById('newScore').value) || 3.5;
+  const app = {
+    id: Date.now(),
+    company: document.getElementById('newCompany').value,
+    role: document.getElementById('newRole').value,
+    archetype: document.getElementById('newArchetype').value,
+    status: document.getElementById('newStatus').value,
+    score,
+    salary: document.getElementById('newSalary').value,
+    notes: document.getElementById('newNotes').value,
+    date: new Date().toISOString().split('T')[0]
+  };
+  apps = [app, ...apps];
+  saveApps(apps);
+  closeModal('addAppModal');
+  updateStats();
+  renderApps();
+  showToast(`"${app.role}" at ${app.company} added to pipeline!`);
+  // Reset form
+  ['newCompany','newRole','newSalary','newScore','newNotes'].forEach(id => document.getElementById(id).value = '');
+}
+
+function openEvalModal(id) {
+  const app = apps.find(a => a.id === id);
+  if (!app) return;
+
+  const scores = evalScores(app);
+  const grade = gradeFromScore(app.score || 3.5);
+  const gc = gradeColor(grade);
+  const overall = app.score || 3.5;
+  const ac = archClass(app.archetype);
+
+  // Pipeline progress (which stage are they at)
+  const pipelineSteps = ['Applied','Responded','Interview','Offer'];
+  const pipeIdx = pipelineSteps.indexOf(app.status);
+
+  document.getElementById('evalModalContent').innerHTML = `
+    <div class="flex items-start justify-between gap-4 mb-6">
+      <div>
+        <div class="flex items-center gap-2 flex-wrap mb-1">
+          <h2 class="text-white font-bold text-lg font-grotesk">${app.role}</h2>
+          <span class="border text-xs font-semibold px-2 py-0.5 rounded-full ${ac}">${app.archetype}</span>
+        </div>
+        <p class="text-slate-400 text-sm">${app.company} &bull; Applied ${formatDate(app.date)}</p>
+      </div>
+      <button onclick="closeModal('evalModal')" class="text-slate-400 hover:text-white flex-shrink-0">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <!-- Overall Score -->
+    <div class="bg-navy-900 border border-navy-700 rounded-xl p-5 mb-5 flex items-center gap-5">
+      <div class="text-center flex-shrink-0">
+        <div class="text-5xl font-extrabold font-grotesk" style="color:${gc}">${grade}</div>
+        <div class="text-slate-500 text-xs mt-1">${overall}/5.0</div>
+      </div>
+      <div class="flex-1">
+        <div class="h-3 bg-navy-700 rounded-full overflow-hidden mb-2">
+          <div class="h-full rounded-full ops-gradient" style="width:${(overall/5)*100}%"></div>
+        </div>
+        <p class="text-slate-400 text-xs">
+          ${overall >= 4.5 ? '🟢 Strong match — prioritise this application.' : overall >= 3.5 ? '🔵 Good fit — worth investing time.' : overall >= 2.5 ? '🟡 Moderate fit — identify gaps before applying.' : '🔴 Weak match — consider skipping or significant prep.'}
+        </p>
+      </div>
+    </div>
+
+    <!-- Pipeline Progress -->
+    ${pipeIdx >= 0 ? `
+    <div class="mb-5">
+      <h3 class="text-white font-semibold text-xs uppercase tracking-wider mb-3">Pipeline Progress</h3>
+      <div class="flex items-center gap-2">
+        ${pipelineSteps.map((step, i) => `
+          <div class="flex items-center gap-2 flex-1">
+            <div class="flex flex-col items-center gap-1 flex-1">
+              <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${i <= pipeIdx ? 'ops-gradient text-white' : 'bg-navy-700 text-slate-600 border border-navy-600'}">
+                ${i <= pipeIdx ? '✓' : i + 1}
+              </div>
+              <span class="text-xs ${i <= pipeIdx ? 'text-slate-300' : 'text-slate-600'} text-center">${step}</span>
+            </div>
+            ${i < pipelineSteps.length - 1 ? `<div class="h-0.5 flex-1 ${i < pipeIdx ? 'ops-gradient' : 'bg-navy-700'} mb-4"></div>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    </div>` : ''}
+
+    <!-- career-ops 10-Dimension Scores -->
+    <div class="mb-5">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-5 h-5 ops-gradient rounded flex items-center justify-center flex-shrink-0">
+          <svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </div>
+        <h3 class="text-white font-semibold text-sm">career-ops Evaluation — 10 Dimensions</h3>
+      </div>
+      <div class="space-y-3">
+        ${EVAL_DIMS.map((dim, i) => {
+          const s = scores[i];
+          const pct = (s / 5) * 100;
+          const col = s >= 4.5 ? '#34d399' : s >= 3.5 ? '#60a5fa' : s >= 2.5 ? '#fbbf24' : '#f87171';
+          return `
+          <div class="bg-navy-900 rounded-xl p-3 border border-navy-700">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-slate-300 text-xs font-medium">${dim.name}</span>
+              <span class="text-xs font-bold" style="color:${col}">${s}/5</span>
+            </div>
+            <div class="h-1.5 bg-navy-700 rounded-full overflow-hidden mb-1.5">
+              <div class="dim-bar rounded-full" style="width:${pct}%;background:${col}"></div>
+            </div>
+            <p class="text-slate-600 text-xs">${dim.desc}</p>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- Notes -->
+    ${app.notes ? `
+    <div class="bg-navy-900 border border-navy-700 rounded-xl p-4 mb-5">
+      <h3 class="text-white font-semibold text-xs uppercase tracking-wider mb-2">Notes</h3>
+      <p class="text-slate-400 text-sm leading-relaxed">${app.notes}</p>
+    </div>` : ''}
+
+    <!-- Actions -->
+    <div class="flex flex-col sm:flex-row gap-3">
+      <select class="flex-1 bg-navy-700 border border-navy-600 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-cyber-500" onchange="updateStatus(${app.id}, this.value); closeModal('evalModal')">
+        ${STATUSES.map(s => `<option ${s === app.status ? 'selected' : ''} value="${s}">${s}</option>`).join('')}
+      </select>
+      <a href="/listings.html" class="flex-1 text-center bg-navy-700 hover:bg-navy-600 border border-navy-600 text-slate-300 font-semibold py-3 rounded-xl text-sm transition-colors">Browse More Jobs</a>
+    </div>
+  `;
+  openModal('evalModal');
+}
+
+// close on backdrop
+document.getElementById('evalModal').addEventListener('click', function(e) { if (e.target === this) closeModal('evalModal'); });
+document.getElementById('addAppModal').addEventListener('click', function(e) { if (e.target === this) closeModal('addAppModal'); });
+
+// Init
+updateStats();
+renderApps();
+</script>

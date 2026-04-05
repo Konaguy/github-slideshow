@@ -34,6 +34,7 @@ extra_js: "/assets/js/jobsite.js"
         <span class="text-slate-500 text-xs">Sort by:</span>
         <select id="sortSelect" onchange="applyFilters()" class="bg-navy-800 border border-navy-600 text-slate-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyber-500">
           <option value="recent">Most Recent</option>
+          <option value="score">AI Score: High to Low</option>
           <option value="salary-high">Salary: High to Low</option>
           <option value="salary-low">Salary: Low to High</option>
         </select>
@@ -97,6 +98,62 @@ extra_js: "/assets/js/jobsite.js"
               <input type="checkbox" value="iam" class="filter-checkbox cat-check accent-cyan-500" onchange="applyFilters()" />
               <span class="text-slate-400 text-sm group-hover:text-white transition-colors">IAM</span>
             </label>
+          </div>
+        </div>
+
+        <!-- Archetype Filter (from career-ops) -->
+        <div class="mb-6 border-t border-navy-700 pt-5">
+          <h4 class="text-slate-300 text-xs font-semibold uppercase tracking-wider mb-1">Archetype</h4>
+          <p class="text-slate-600 text-xs mb-3">Powered by career-ops</p>
+          <div class="space-y-2">
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="Red Team" class="filter-checkbox arch-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="flex items-center gap-1.5 text-slate-400 text-sm group-hover:text-white transition-colors">
+                <span class="w-2 h-2 rounded-full bg-red-400/60 inline-block"></span>Red Team
+              </span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="Blue Team" class="filter-checkbox arch-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="flex items-center gap-1.5 text-slate-400 text-sm group-hover:text-white transition-colors">
+                <span class="w-2 h-2 rounded-full bg-blue-400/60 inline-block"></span>Blue Team
+              </span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="AppSec" class="filter-checkbox arch-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="flex items-center gap-1.5 text-slate-400 text-sm group-hover:text-white transition-colors">
+                <span class="w-2 h-2 rounded-full bg-purple-400/60 inline-block"></span>AppSec
+              </span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="CloudSec" class="filter-checkbox arch-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="flex items-center gap-1.5 text-slate-400 text-sm group-hover:text-white transition-colors">
+                <span class="w-2 h-2 rounded-full bg-cyan-400/60 inline-block"></span>CloudSec
+              </span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="GRC" class="filter-checkbox arch-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="flex items-center gap-1.5 text-slate-400 text-sm group-hover:text-white transition-colors">
+                <span class="w-2 h-2 rounded-full bg-amber-400/60 inline-block"></span>GRC
+              </span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" value="SecEng" class="filter-checkbox arch-check accent-cyan-500" onchange="applyFilters()" />
+              <span class="flex items-center gap-1.5 text-slate-400 text-sm group-hover:text-white transition-colors">
+                <span class="w-2 h-2 rounded-full bg-emerald-400/60 inline-block"></span>SecEng
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <!-- AI Score Filter -->
+        <div class="mb-6 border-t border-navy-700 pt-5">
+          <h4 class="text-slate-300 text-xs font-semibold uppercase tracking-wider mb-1">Min. AI Score</h4>
+          <p class="text-slate-600 text-xs mb-3">career-ops evaluation</p>
+          <input type="range" id="minScore" min="1" max="5" step="0.5" value="1" oninput="updateScoreLabel(this.value); applyFilters()" class="w-full accent-cyan-500" />
+          <div class="flex justify-between text-xs text-slate-500 mt-1">
+            <span>Any</span>
+            <span id="scoreLabel" class="text-cyber-400 font-semibold">Any</span>
+            <span>5.0</span>
           </div>
         </div>
 
@@ -213,7 +270,7 @@ extra_js: "/assets/js/jobsite.js"
 </div>
 
 <script>
-// Job data embedded from Jekyll
+// Job data embedded from Jekyll — includes career-ops fields (archetype, score, grade, ats_keywords)
 const JOBS = [
   {% for job in site.data.jobs %}
   {
@@ -225,10 +282,14 @@ const JOBS = [
     remote: {{ job.remote | jsonify }},
     type: {{ job.type | jsonify }},
     category: {{ job.category | jsonify }},
+    archetype: {{ job.archetype | jsonify }},
     level: {{ job.level | jsonify }},
     salary_min: {{ job.salary_min }},
     salary_max: {{ job.salary_max }},
+    score: {{ job.score }},
+    grade: {{ job.grade | jsonify }},
     tags: {{ job.tags | jsonify }},
+    ats_keywords: {{ job.ats_keywords | jsonify }},
     featured: {{ job.featured }},
     posted_days_ago: {{ job.posted_days_ago }},
     description: {{ job.description | jsonify }}
@@ -237,6 +298,26 @@ const JOBS = [
 ];
 
 let filteredJobs = [...JOBS];
+
+// career-ops archetype → CSS class mapping
+function archClass(arch) {
+  const m = { 'Red Team':'arch-redteam','Blue Team':'arch-blueteam','AppSec':'arch-appsec','CloudSec':'arch-cloudsec','GRC':'arch-grc','SecEng':'arch-seceng' };
+  return m[arch] || 'arch-seceng';
+}
+// career-ops grade → colour class
+function gradeClass(g) {
+  return { A:'grade-a', B:'grade-b', C:'grade-c', D:'grade-d' }[g] || 'grade-b';
+}
+// 5-star score → filled stars string
+function scoreBars(score) {
+  const full = Math.floor(score);
+  const half = (score - full) >= 0.4 ? 1 : 0;
+  let s = '';
+  for (let i = 0; i < full; i++) s += '<span class="text-cyber-400">★</span>';
+  if (half) s += '<span class="text-cyber-400 opacity-50">★</span>';
+  for (let i = full + half; i < 5; i++) s += '<span class="text-slate-700">★</span>';
+  return s;
+}
 
 function renderJobs(jobs) {
   const container = document.getElementById('jobListings');
@@ -267,6 +348,7 @@ function renderJobs(jobs) {
             </div>
             <div class="flex items-center gap-2 flex-wrap">
               ${job.featured ? '<span class="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-xs font-semibold px-2 py-0.5 rounded-full">Featured</span>' : ''}
+              <span class="border text-xs font-semibold px-2 py-0.5 rounded-full ${archClass(job.archetype)}">${job.archetype}</span>
               <span class="bg-navy-700 text-slate-400 text-xs px-2 py-0.5 rounded-full border border-navy-600">${job.level}</span>
             </div>
           </div>
@@ -282,39 +364,56 @@ function renderJobs(jobs) {
           </div>
 
           <div class="flex flex-wrap gap-1.5 mt-3">
-            ${job.tags.slice(0, 5).map(t => `<span class="bg-navy-900 text-slate-400 text-xs px-2 py-0.5 rounded-md border border-navy-600">${t}</span>`).join('')}
+            ${job.tags.slice(0, 4).map(t => `<span class="bg-navy-900 text-slate-400 text-xs px-2 py-0.5 rounded-md border border-navy-600">${t}</span>`).join('')}
           </div>
         </div>
       </div>
       <div class="mt-4 pt-4 border-t border-navy-700 flex items-center justify-between">
-        <span class="text-slate-500 text-xs">${job.posted_days_ago} day${job.posted_days_ago !== 1 ? 's' : ''} ago</span>
+        <div class="flex items-center gap-3">
+          <span class="text-slate-500 text-xs">${job.posted_days_ago} day${job.posted_days_ago !== 1 ? 's' : ''} ago</span>
+          <span class="text-xs flex items-center gap-1" title="career-ops AI score: ${job.score}/5">
+            ${scoreBars(job.score)}
+            <span class="font-bold text-xs ${gradeClass(job.grade)} ml-0.5">${job.grade}</span>
+          </span>
+        </div>
         <button class="btn-cyber text-white text-xs font-semibold px-4 py-1.5 rounded-lg" onclick="event.stopPropagation(); openJobModal(${job.id})">View &amp; Apply</button>
       </div>
     </div>
   `).join('');
 }
 
+function updateScoreLabel(val) {
+  const el = document.getElementById('scoreLabel');
+  el.textContent = val == 1 ? 'Any' : val + '+';
+}
+
 function applyFilters() {
   const q = document.getElementById('searchInput').value.toLowerCase();
   const loc = document.getElementById('locationInput').value.toLowerCase();
   const sort = document.getElementById('sortSelect').value;
+  const minScore = parseFloat(document.getElementById('minScore').value);
 
   const catChecks = [...document.querySelectorAll('.cat-check:checked')].map(c => c.value);
   const typeChecks = [...document.querySelectorAll('.type-check:checked')].map(c => c.value);
   const levelChecks = [...document.querySelectorAll('.level-check:checked')].map(c => c.value);
   const remoteChecks = [...document.querySelectorAll('.remote-check:checked')].map(c => c.value);
+  const archChecks = [...document.querySelectorAll('.arch-check:checked')].map(c => c.value);
 
   let jobs = JOBS.filter(job => {
-    if (q && !([job.title, job.company, job.description, ...job.tags].join(' ').toLowerCase().includes(q))) return false;
+    const searchText = [job.title, job.company, job.description, job.archetype, ...job.tags, ...(job.ats_keywords || [])].join(' ').toLowerCase();
+    if (q && !searchText.includes(q)) return false;
     if (loc && !job.location.toLowerCase().includes(loc) && !(loc.includes('remote') && job.remote !== 'On-site')) return false;
     if (catChecks.length && !catChecks.includes(job.category)) return false;
     if (typeChecks.length && !typeChecks.includes(job.type)) return false;
     if (levelChecks.length && !levelChecks.includes(job.level)) return false;
     if (remoteChecks.length && !remoteChecks.includes(job.remote)) return false;
+    if (archChecks.length && !archChecks.includes(job.archetype)) return false;
+    if (minScore > 1 && job.score < minScore) return false;
     return true;
   });
 
-  if (sort === 'salary-high') jobs.sort((a,b) => b.salary_max - a.salary_max);
+  if (sort === 'score') jobs.sort((a,b) => b.score - a.score);
+  else if (sort === 'salary-high') jobs.sort((a,b) => b.salary_max - a.salary_max);
   else if (sort === 'salary-low') jobs.sort((a,b) => a.salary_min - b.salary_min);
   else jobs.sort((a,b) => a.posted_days_ago - b.posted_days_ago);
 
@@ -325,19 +424,50 @@ function applyFilters() {
 function clearFilters() {
   document.getElementById('searchInput').value = '';
   document.getElementById('locationInput').value = '';
+  document.getElementById('minScore').value = 1;
+  updateScoreLabel(1);
   document.querySelectorAll('.filter-checkbox').forEach(c => c.checked = false);
   applyFilters();
+}
+
+// career-ops 10-dimension evaluation data (simulated per archetype)
+const EVAL_DIMENSIONS = [
+  'Archetype Detection',
+  'CV-to-JD Mapping',
+  'Level Assessment',
+  'Compensation & Market Demand',
+  'CV Personalization Strategy',
+  'Interview Prep (STAR+R)',
+  'Positioning Strategy',
+  'Gap Mitigation Plans',
+  'Red-Flag Handling',
+  'Case Study Selection'
+];
+
+function getEvalScores(job) {
+  // Deterministic pseudo-scores based on overall score
+  const base = job.score;
+  const seed = job.id;
+  return EVAL_DIMENSIONS.map((_, i) => {
+    const noise = ((seed * (i + 7) * 13) % 10) / 10 - 0.5; // -0.5 to +0.5
+    return Math.min(5, Math.max(1, +(base + noise * 0.8).toFixed(1)));
+  });
 }
 
 function openJobModal(id) {
   const job = JOBS.find(j => j.id === id);
   if (!job) return;
+  const evalScores = getEvalScores(job);
+
   document.getElementById('jobModalContent').innerHTML = `
-    <div class="flex items-start justify-between gap-4 mb-6">
+    <div class="flex items-start justify-between gap-4 mb-5">
       <div class="flex items-start gap-4">
         <div class="w-14 h-14 rounded-xl flex items-center justify-center font-bold text-lg bg-navy-700 text-cyan-400 border border-navy-600 flex-shrink-0">${job.company_logo}</div>
         <div>
-          <h2 class="text-white font-bold text-xl">${job.title}</h2>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h2 class="text-white font-bold text-xl">${job.title}</h2>
+            <span class="border text-xs font-semibold px-2 py-0.5 rounded-full ${archClass(job.archetype)}">${job.archetype}</span>
+          </div>
           <p class="text-slate-400 text-sm mt-0.5">${job.company}</p>
         </div>
       </div>
@@ -346,7 +476,7 @@ function openJobModal(id) {
       </button>
     </div>
 
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
       <div class="bg-navy-900 rounded-xl p-3 text-center border border-navy-700">
         <div class="text-slate-500 text-xs mb-1">Location</div>
         <div class="text-white text-sm font-medium">${job.location}</div>
@@ -360,18 +490,55 @@ function openJobModal(id) {
         <div class="text-white text-sm font-medium">$${Math.round(job.salary_min/1000)}k–$${Math.round(job.salary_max/1000)}k</div>
       </div>
       <div class="bg-navy-900 rounded-xl p-3 text-center border border-navy-700">
-        <div class="text-slate-500 text-xs mb-1">Level</div>
-        <div class="text-white text-sm font-medium">${job.level}</div>
+        <div class="text-slate-500 text-xs mb-1">AI Score</div>
+        <div class="font-bold text-lg ${gradeClass(job.grade)}">${job.grade} <span class="text-sm font-normal text-slate-400">${job.score}/5</span></div>
       </div>
     </div>
 
-    <div class="mb-6">
+    <!-- career-ops Evaluation Panel -->
+    <div class="bg-navy-900 border border-navy-700 rounded-xl p-4 mb-5">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+          <div class="w-5 h-5 ops-gradient rounded flex items-center justify-center">
+            <svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          </div>
+          <span class="text-white font-semibold text-sm">career-ops Evaluation</span>
+          <span class="text-slate-500 text-xs">10-dimension analysis</span>
+        </div>
+        <span class="text-slate-500 text-xs">Score: <span class="font-bold ${gradeClass(job.grade)}">${job.score}/5</span></span>
+      </div>
+      <div class="grid grid-cols-1 gap-2">
+        ${EVAL_DIMENSIONS.map((dim, i) => {
+          const s = evalScores[i];
+          const pct = (s / 5) * 100;
+          const col = s >= 4.5 ? '#34d399' : s >= 3.5 ? '#60a5fa' : s >= 2.5 ? '#fbbf24' : '#f87171';
+          return `<div>
+            <div class="flex items-center justify-between mb-0.5">
+              <span class="text-slate-400 text-xs">${dim}</span>
+              <span class="text-xs font-semibold" style="color:${col}">${s}</span>
+            </div>
+            <div class="h-1.5 bg-navy-700 rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all" style="width:${pct}%;background:${col}"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <div class="mb-5">
       <h3 class="text-white font-semibold text-sm mb-2">About the Role</h3>
       <p class="text-slate-400 text-sm leading-relaxed">${job.description}</p>
     </div>
 
-    <div class="mb-6">
-      <h3 class="text-white font-semibold text-sm mb-3">Required Skills</h3>
+    <div class="mb-5">
+      <h3 class="text-white font-semibold text-sm mb-2">ATS Keywords</h3>
+      <div class="flex flex-wrap gap-1.5">
+        ${(job.ats_keywords || job.tags).map(k => `<span class="bg-cyber-500/10 border border-cyber-500/20 text-cyber-400 text-xs px-2 py-0.5 rounded-md">${k}</span>`).join('')}
+      </div>
+    </div>
+
+    <div class="mb-5">
+      <h3 class="text-white font-semibold text-sm mb-2">Required Skills</h3>
       <div class="flex flex-wrap gap-2">
         ${job.tags.map(t => `<span class="bg-navy-900 border border-navy-600 text-slate-300 text-xs px-3 py-1 rounded-full">${t}</span>`).join('')}
       </div>
@@ -379,7 +546,7 @@ function openJobModal(id) {
 
     <div class="border-t border-navy-700 pt-5 flex flex-col sm:flex-row gap-3">
       <button onclick="handleApply()" class="flex-1 btn-cyber text-white font-semibold py-3 rounded-xl text-sm">Apply Now</button>
-      <button onclick="showToast('Job saved to your profile!')" class="flex-1 bg-navy-700 hover:bg-navy-600 border border-navy-600 text-slate-300 font-semibold py-3 rounded-xl text-sm transition-colors">Save Job</button>
+      <button onclick="addToDashboard('${job.company}', '${job.title}'); event.stopPropagation();" class="flex-1 bg-navy-700 hover:bg-navy-600 border border-navy-600 text-slate-300 font-semibold py-3 rounded-xl text-sm transition-colors">Track Application</button>
     </div>
     <p class="text-slate-500 text-xs text-center mt-3">Posted ${job.posted_days_ago} day${job.posted_days_ago !== 1 ? 's' : ''} ago &bull; ${job.type}</p>
   `;
@@ -389,6 +556,11 @@ function openJobModal(id) {
 function handleApply() {
   closeModal('jobModal');
   openModal('registerModal');
+}
+
+function addToDashboard(company, title) {
+  closeModal('jobModal');
+  showToast(`"${title}" at ${company} added to your Dashboard tracker!`);
 }
 
 // URL param search

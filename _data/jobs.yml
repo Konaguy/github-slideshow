@@ -2,15 +2,18 @@
   title: "Senior Penetration Tester"
   company: "CrowdStrike"
   company_logo: "CS"
-  company_color: "#e84118"
   location: "Austin, TX"
   remote: "Remote OK"
   type: "Full-time"
   category: "penetration-testing"
+  archetype: "Red Team"
   level: "Senior"
   salary_min: 130000
   salary_max: 170000
+  score: 4.8
+  grade: "A"
   tags: ["OSCP", "Red Team", "Web App", "Network"]
+  ats_keywords: ["penetration testing", "red team", "OSCP", "Metasploit", "Cobalt Strike", "exploit development", "post-exploitation", "lateral movement"]
   featured: true
   posted_days_ago: 1
   description: "Join our world-class adversary intelligence team to lead red team operations and help Fortune 500 companies understand their security posture."
@@ -19,15 +22,18 @@
   title: "Cloud Security Architect"
   company: "Palo Alto Networks"
   company_logo: "PA"
-  company_color: "#0078d4"
   location: "Santa Clara, CA"
   remote: "Hybrid"
   type: "Full-time"
   category: "cloud-security"
+  archetype: "CloudSec"
   level: "Senior"
   salary_min: 150000
   salary_max: 200000
+  score: 4.5
+  grade: "A"
   tags: ["AWS", "Azure", "GCP", "CSPM", "Zero Trust"]
+  ats_keywords: ["cloud security", "AWS", "Azure", "GCP", "CSPM", "CASB", "Zero Trust", "IAM", "cloud architecture"]
   featured: true
   posted_days_ago: 2
   description: "Design and implement cloud security architecture for enterprise clients across multi-cloud environments."
@@ -36,15 +42,18 @@
   title: "SOC Analyst (Tier 2)"
   company: "Mandiant"
   company_logo: "MD"
-  company_color: "#ff6b35"
   location: "Remote"
   remote: "Fully Remote"
   type: "Full-time"
   category: "soc"
+  archetype: "Blue Team"
   level: "Mid"
   salary_min: 85000
   salary_max: 115000
+  score: 3.9
+  grade: "B"
   tags: ["SIEM", "Splunk", "Incident Response", "Threat Hunting"]
+  ats_keywords: ["SOC", "SIEM", "Splunk", "incident response", "threat hunting", "EDR", "SOAR", "triage", "alert analysis"]
   featured: false
   posted_days_ago: 3
   description: "Perform in-depth analysis of security events, lead incident response activities, and develop detection content."
@@ -53,15 +62,18 @@
   title: "DevSecOps Engineer"
   company: "Stripe"
   company_logo: "ST"
-  company_color: "#635bff"
   location: "San Francisco, CA"
   remote: "Hybrid"
   type: "Full-time"
   category: "devsecops"
+  archetype: "SecEng"
   level: "Mid"
   salary_min: 140000
   salary_max: 185000
+  score: 4.2
+  grade: "B"
   tags: ["CI/CD", "Kubernetes", "SAST", "DAST", "Terraform"]
+  ats_keywords: ["DevSecOps", "CI/CD", "Kubernetes", "SAST", "DAST", "Terraform", "IaC security", "pipeline security", "container security"]
   featured: true
   posted_days_ago: 2
   description: "Embed security into the software development lifecycle, build security automation tooling and champion secure coding practices."
@@ -70,15 +82,18 @@
   title: "Malware Analyst / Reverse Engineer"
   company: "FireEye"
   company_logo: "FE"
-  company_color: "#00b4d8"
   location: "Milpitas, CA"
   remote: "Remote OK"
   type: "Full-time"
   category: "malware-analysis"
+  archetype: "Red Team"
   level: "Senior"
   salary_min: 120000
   salary_max: 155000
+  score: 4.6
+  grade: "A"
   tags: ["IDA Pro", "Ghidra", "x86", "Python", "Threat Intel"]
+  ats_keywords: ["malware analysis", "reverse engineering", "IDA Pro", "Ghidra", "assembly", "x86", "threat intelligence", "binary analysis", "dynamic analysis"]
   featured: false
   posted_days_ago: 5
   description: "Analyze sophisticated malware samples, reverse engineer binaries, and produce actionable threat intelligence reports."
@@ -87,15 +102,18 @@
   title: "Application Security Engineer"
   company: "Shopify"
   company_logo: "SH"
-  company_color: "#96bf48"
   location: "Ottawa, ON (Canada)"
   remote: "Fully Remote"
   type: "Full-time"
   category: "appsec"
+  archetype: "AppSec"
   level: "Mid"
   salary_min: 110000
   salary_max: 145000
+  score: 3.7
+  grade: "B"
   tags: ["Burp Suite", "OWASP", "Ruby", "JavaScript", "Code Review"]
+  ats_keywords: ["application security", "AppSec", "Burp Suite", "OWASP", "code review", "SAST", "penetration testing", "secure SDLC", "vulnerability management"]
   featured: false
   posted_days_ago: 4
   description: "Partner with development teams to identify and fix vulnerabilities, conduct security reviews, and scale AppSec processes."
@@ -104,15 +122,18 @@
   title: "Threat Intelligence Analyst"
   company: "Recorded Future"
   company_logo: "RF"
-  company_color: "#0066cc"
   location: "Boston, MA"
   remote: "Hybrid"
   type: "Full-time"
   category: "threat-intelligence"
+  archetype: "Blue Team"
   level: "Mid"
   salary_min: 90000
   salary_max: 120000
+  score: 4.0
+  grade: "B"
   tags: ["OSINT", "CTI", "MITRE ATT&CK", "Dark Web", "Python"]
+  ats_keywords: ["threat intelligence", "CTI", "OSINT", "MITRE ATT&CK", "dark web monitoring", "IOC analysis", "threat actor tracking", "intelligence reporting"]
   featured: false
   posted_days_ago: 6
   description: "Produce high-quality intelligence products on threat actors, campaigns, and emerging TTPs for enterprise clients."
@@ -121,15 +142,18 @@
   title: "Security Software Engineer"
   company: "Google"
   company_logo: "GO"
-  company_color: "#4285f4"
   location: "Mountain View, CA"
   remote: "Hybrid"
   type: "Full-time"
   category: "software-security"
+  archetype: "SecEng"
   level: "Senior"
   salary_min: 175000
   salary_max: 250000
+  score: 4.9
+  grade: "A"
   tags: ["C++", "Go", "Fuzzing", "Memory Safety", "Secure Design"]
+  ats_keywords: ["security engineering", "C++", "Go", "fuzzing", "memory safety", "secure design", "cryptography", "threat modeling", "vulnerability research"]
   featured: true
   posted_days_ago: 1
   description: "Build security infrastructure and tools at scale to protect billions of Google users worldwide."
@@ -138,15 +162,18 @@
   title: "IAM Security Specialist"
   company: "Okta"
   company_logo: "OK"
-  company_color: "#007dc1"
   location: "San Francisco, CA"
   remote: "Remote OK"
   type: "Full-time"
   category: "iam"
+  archetype: "CloudSec"
   level: "Mid"
   salary_min: 105000
   salary_max: 140000
+  score: 3.5
+  grade: "C"
   tags: ["OAuth", "SAML", "Zero Trust", "LDAP", "PAM"]
+  ats_keywords: ["IAM", "identity management", "OAuth", "SAML", "LDAP", "PAM", "Zero Trust", "SSO", "MFA", "access governance"]
   featured: false
   posted_days_ago: 7
   description: "Design and implement identity and access management solutions for enterprise customers worldwide."
@@ -155,15 +182,18 @@
   title: "GRC Analyst — NIST/SOC 2"
   company: "Databricks"
   company_logo: "DB"
-  company_color: "#ff3621"
   location: "San Francisco, CA"
   remote: "Hybrid"
   type: "Full-time"
   category: "grc"
+  archetype: "GRC"
   level: "Mid"
   salary_min: 95000
   salary_max: 125000
+  score: 3.8
+  grade: "B"
   tags: ["SOC 2", "NIST CSF", "ISO 27001", "Risk Management", "Audit"]
+  ats_keywords: ["GRC", "SOC 2", "NIST CSF", "ISO 27001", "risk management", "compliance", "audit", "control assessment", "policy development"]
   featured: false
   posted_days_ago: 3
   description: "Lead compliance programs, manage risk assessments, and coordinate with external auditors for SOC 2 and ISO certifications."
@@ -172,15 +202,18 @@
   title: "Junior Security Analyst"
   company: "Cisco"
   company_logo: "CI"
-  company_color: "#1ba0d7"
   location: "Research Triangle Park, NC"
   remote: "Hybrid"
   type: "Full-time"
   category: "soc"
+  archetype: "Blue Team"
   level: "Junior"
   salary_min: 65000
   salary_max: 85000
+  score: 2.8
+  grade: "C"
   tags: ["SIEM", "Network Security", "Wireshark", "CompTIA Sec+"]
+  ats_keywords: ["security analyst", "SIEM", "network security", "Wireshark", "incident response", "CompTIA Security+", "log analysis", "alert triage"]
   featured: false
   posted_days_ago: 8
   description: "Monitor security systems, triage alerts, and support incident response as part of our global security operations center."
@@ -189,15 +222,18 @@
   title: "Product Security Lead"
   company: "Twilio"
   company_logo: "TW"
-  company_color: "#f22f46"
   location: "San Francisco, CA"
   remote: "Fully Remote"
   type: "Full-time"
   category: "appsec"
+  archetype: "AppSec"
   level: "Lead"
   salary_min: 160000
   salary_max: 205000
+  score: 4.3
+  grade: "B"
   tags: ["API Security", "Threat Modeling", "SDLC", "Python", "Go"]
+  ats_keywords: ["product security", "API security", "threat modeling", "SDLC", "security leadership", "Python", "Go", "vulnerability management", "security strategy"]
   featured: false
   posted_days_ago: 2
   description: "Lead the product security team, drive security strategy, and work with engineering to build security into Twilio's communications platform."

@@ -25,14 +25,21 @@
           },
           fontFamily: {
             sans: ['Inter', 'system-ui', 'sans-serif'],
+            grotesk: ['Space Grotesk', 'system-ui', 'sans-serif'],
+            dm: ['DM Sans', 'system-ui', 'sans-serif'],
             mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            navy: { 900: '#0a0f1e', 800: '#0f172a', 700: '#1e293b', 600: '#2d3f5e' },
+            cyber: { 400: '#22d3ee', 500: '#06b6d4', 600: '#0891b2' },
+            ops: { cyan: 'hsl(187,74%,32%)', purple: 'hsl(270,70%,45%)' }
           }
         }
       }
     }
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     body { background-color: #0a0f1e; color: #e2e8f0; }
     .gradient-text {
@@ -86,6 +93,23 @@
     ::-webkit-scrollbar-track { background: #0a0f1e; }
     ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #06b6d4; }
+
+    /* career-ops archetype badge colours */
+    .arch-redteam   { background: rgba(239,68,68,.12);  color: #f87171; border-color: rgba(239,68,68,.25); }
+    .arch-blueteam  { background: rgba(59,130,246,.12); color: #60a5fa; border-color: rgba(59,130,246,.25); }
+    .arch-appsec    { background: rgba(168,85,247,.12); color: #c084fc; border-color: rgba(168,85,247,.25); }
+    .arch-cloudsec  { background: rgba(6,182,212,.12);  color: #22d3ee; border-color: rgba(6,182,212,.25); }
+    .arch-grc       { background: rgba(245,158,11,.12); color: #fbbf24; border-color: rgba(245,158,11,.25); }
+    .arch-seceng    { background: rgba(16,185,129,.12); color: #34d399; border-color: rgba(16,185,129,.25); }
+
+    /* career-ops score grade */
+    .grade-a { color: #34d399; }
+    .grade-b { color: #60a5fa; }
+    .grade-c { color: #fbbf24; }
+    .grade-d { color: #f87171; }
+
+    /* ops gradient (career-ops cv-template palette) */
+    .ops-gradient { background: linear-gradient(135deg, hsl(187,74%,32%), hsl(270,70%,45%)); }
   </style>
 </head>
 <body class="font-sans antialiased">
@@ -109,6 +133,10 @@
           <a href="/listings.html" class="nav-link text-slate-300 hover:text-white text-sm font-medium {% if page.url contains 'listings' %}active-nav{% endif %}">Browse Jobs</a>
           <a href="/post-job.html" class="nav-link text-slate-300 hover:text-white text-sm font-medium {% if page.url contains 'post-job' %}active-nav{% endif %}">Post a Job</a>
           <a href="/pricing.html" class="nav-link text-slate-300 hover:text-white text-sm font-medium {% if page.url contains 'pricing' %}active-nav{% endif %}">Pricing</a>
+          <a href="/dashboard.html" class="nav-link text-slate-300 hover:text-white text-sm font-medium flex items-center gap-1.5 {% if page.url contains 'dashboard' %}active-nav{% endif %}">
+            <span class="w-1.5 h-1.5 rounded-full ops-gradient inline-block"></span>
+            Dashboard
+          </a>
         </div>
 
         <!-- Auth Buttons -->
@@ -131,6 +159,9 @@
           <a href="/listings.html" class="text-slate-300 hover:text-cyber-400 text-sm font-medium py-2">Browse Jobs</a>
           <a href="/post-job.html" class="text-slate-300 hover:text-cyber-400 text-sm font-medium py-2">Post a Job</a>
           <a href="/pricing.html" class="text-slate-300 hover:text-cyber-400 text-sm font-medium py-2">Pricing</a>
+          <a href="/dashboard.html" class="text-slate-300 hover:text-cyber-400 text-sm font-medium py-2 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full ops-gradient inline-block"></span>Dashboard
+          </a>
           <div class="flex gap-3 pt-2">
             <button onclick="openModal('loginModal')" class="flex-1 text-center text-slate-300 border border-slate-600 text-sm font-medium px-4 py-2 rounded-lg hover:border-cyber-500 transition-colors">Sign In</button>
             <button onclick="openModal('registerModal')" class="flex-1 btn-cyber text-white text-sm font-semibold px-4 py-2 rounded-lg text-center">Get Started</button>
