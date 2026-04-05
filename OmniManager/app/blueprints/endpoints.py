@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required
 from sqlalchemy import select
 from app.extensions import db
@@ -7,6 +7,7 @@ from app.models.endpoint import Endpoint
 from app.models.patch import PatchScanResult
 from app.models.software import SoftwareScanResult
 from app.models.vulnerability import VulnerabilityScanResult
+from app.models.metric import EndpointMetric
 from app.services.winrm_service import WinRMService
 from app.utils.audit import log_action
 
@@ -206,3 +207,99 @@ def import_csv():
         return redirect(url_for("endpoints.index"))
 
     return render_template("endpoints/import.html")
+
+
+@endpoints_bp.route("/<int:endpoint_id>/metrics", methods=["POST"])
+@login_required
+def collect_metrics(endpoint_id):
+    ep = db.get_or_404(Endpoint, endpoint_id)
+    svc = WinRMService(ep)
+    script = (
+        "$cpu = (Get-CimInstance Win32_Processor | Measure-Object -Property LoadPercentage -Average).Average;"
+        "$os = Get-CimInstance Win32_OperatingSystem;"
+        "$disk = Get-PSDrive C;"
+        "$ramPct = [math]::Round(($os.TotalVisibleMemorySize - $os.FreePhysicalMemory) / $os.TotalVisibleMemorySize * 100, 1);"
+        "$ramFreeGB = [math]::Round($os.FreePhysicalMemory / 1MB, 2);"
+        "$diskTotalGB = [math]::Round(($disk.Used + $disk.Free) / 1GB, 2);"
+        "$diskFreeGB = [math]::Round($disk.Free / 1GB, 2);"
+        "$diskPct = [math]::Round($disk.Used / ($disk.Used + $disk.Free) * 100, 1);"
+        "Write-Output \"$cpu|$ramPct|$ramFreeGB|$diskPct|$diskFreeGB|$diskTotalGB\""
+    )
+    result, err = svc.run_ps(script)
+    if err:
+        return jsonify({"error": err}), 400
+    try:
+        parts = result.strip().split("|")
+        m = EndpointMetric(
+            endpoint_id=ep.id,
+            cpu_percent=float(parts[0]),
+            ram_percent=float(parts[1]),
+            ram_free_gb=float(parts[2]),
+            disk_percent=float(parts[3]),
+            disk_free_gb=float(parts[4]),
+            disk_total_gb=float(parts[5]),
+        )
+        db.session.add(m)
+        db.session.commit()
+        return jsonify({
+            "cpu_percent": m.cpu_percent,
+            "ram_percent": m.ram_percent,
+            "ram_free_gb": m.ram_free_gb,
+            "disk_percent": m.disk_percent,
+            "disk_free_gb": m.disk_free_gb,
+            "disk_total_gb": m.disk_total_gb,
+        })
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@endpoints_bp.route("/import-ad", methods=["GET", "POST"])
+@login_required
+def import_ad():
+    if request.method == "POST":
+        server = request.form.get("server", "").strip()
+        base_dn = request.form.get("base_dn", "").strip()
+        bind_user = request.form.get("bind_user", "").strip()
+        bind_pass = request.form.get("bind_pass", "")
+
+        if not server or not base_dn:
+            flash("Server and Base DN are required.", "danger")
+            return redirect(url_for("endpoints.import_ad"))
+
+        try:
+            from ldap3 import Server as LdapServer, Connection, ALL, SUBTREE
+            ldap_srv = LdapServer(server, get_info=ALL)
+            conn_kwargs = {"auto_bind": True}
+            if bind_user:
+                conn_kwargs["user"] = bind_user
+                conn_kwargs["password"] = bind_pass
+            conn = Connection(ldap_srv, **conn_kwargs)
+            conn.search(
+                base_dn,
+                "(objectCategory=computer)",
+                search_scope=SUBTREE,
+                attributes=["dNSHostName", "operatingSystem", "name"],
+            )
+            added = 0
+            for entry in conn.entries:
+                hostname = str(entry.dNSHostName or entry.name).strip()
+                if not hostname:
+                    continue
+                if not Endpoint.query.filter_by(hostname=hostname).first():
+                    ep = Endpoint(
+                        hostname=hostname,
+                        ip_address="0.0.0.0",
+                        os_name=str(entry.operatingSystem) if entry.operatingSystem else None,
+                    )
+                    db.session.add(ep)
+                    added += 1
+            db.session.commit()
+            log_action("endpoint.import_ad", detail=f"Imported {added} endpoints from {server}")
+            flash(f"AD import complete — {added} new endpoint(s) added.", "success")
+            return redirect(url_for("endpoints.index"))
+        except ImportError:
+            flash("ldap3 package not installed. Run: pip install ldap3", "danger")
+        except Exception as exc:
+            flash(f"AD import failed: {exc}", "danger")
+
+    return render_template("endpoints/import_ad.html")

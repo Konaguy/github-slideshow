@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Vulnerability Summary Report{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('reports.index') }}">Reports</a></li>
+<li class="breadcrumb-item active">Vulnerability Summary</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@media print {
+  .omni-sidebar, .omni-topbar, .no-print { display: none !important; }
+  .omni-main { margin-left: 0 !important; }
+  .card { border: 1px solid #ccc !important; background: #fff !important; }
+  body { background: #fff !important; color: #000 !important; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0"><i class="bi bi-shield-exclamation me-2"></i>Vulnerability Summary Report</h1>
+    <small class="text-muted">Open vulnerabilities per endpoint, sorted by total count</small>
+  </div>
+  <button class="btn btn-sm btn-outline-secondary no-print" onclick="window.print()">
+    <i class="bi bi-printer me-1"></i>Print
+  </button>
+</div>
+
+<!-- Totals -->
+{% if severity_totals %}
+<div class="row g-3 mb-4">
+  {% for sev, cnt in severity_totals.items() | sort(attribute='0') %}
+  <div class="col-6 col-md-3">
+    <div class="card text-center">
+      <div class="card-body py-2">
+        <div class="fs-3 fw-bold
+          {% if sev == 'critical' %}text-danger
+          {% elif sev == 'high' %}text-warning
+          {% elif sev == 'medium' %}text-info
+          {% else %}text-muted{% endif %}">{{ cnt }}</div>
+        <div class="text-muted small text-capitalize">{{ sev }}</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Endpoint</th>
+          <th class="text-danger">Critical</th>
+          <th class="text-warning">High</th>
+          <th class="text-info">Medium</th>
+          <th class="text-muted">Low</th>
+          <th>Total</th>
+          <th>Risk</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td>
+            <a href="{{ url_for('endpoints.detail', endpoint_id=r.endpoint.id) }}" class="text-decoration-none">
+              <i class="bi bi-pc-display me-1 text-muted"></i>{{ r.endpoint.hostname }}
+            </a>
+          </td>
+          <td>
+            {% if r.by_sev.get('critical', 0) > 0 %}
+            <span class="badge bg-danger">{{ r.by_sev.get('critical', 0) }}</span>
+            {% else %}<span class="text-muted">0</span>{% endif %}
+          </td>
+          <td>
+            {% if r.by_sev.get('high', 0) > 0 %}
+            <span class="badge bg-warning">{{ r.by_sev.get('high', 0) }}</span>
+            {% else %}<span class="text-muted">0</span>{% endif %}
+          </td>
+          <td>{{ r.by_sev.get('medium', 0) }}</td>
+          <td class="text-muted">{{ r.by_sev.get('low', 0) }}</td>
+          <td>{{ r.total }}</td>
+          <td>
+            {% if r.by_sev.get('critical', 0) > 0 %}
+              <span class="badge bg-danger">Critical</span>
+            {% elif r.by_sev.get('high', 0) > 0 %}
+              <span class="badge bg-warning">High</span>
+            {% elif r.total > 0 %}
+              <span class="badge bg-info">Medium</span>
+            {% else %}
+              <span class="badge bg-success">Clean</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-4">No vulnerability data available.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

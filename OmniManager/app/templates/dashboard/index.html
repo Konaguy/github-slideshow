@@ -15,13 +15,13 @@
         <div class="d-flex justify-content-between">
           <div>
             <div class="text-muted small">Total Endpoints</div>
-            <div class="fs-2 fw-bold">{{ total_endpoints }}</div>
+            <div class="fs-2 fw-bold" id="kpi-total-endpoints">{{ total_endpoints }}</div>
           </div>
           <div class="omni-stat-icon text-primary"><i class="bi bi-pc-display-horizontal"></i></div>
         </div>
         <div class="mt-2 small">
-          <span class="text-success me-2"><i class="bi bi-circle-fill" style="font-size:.5rem"></i> {{ online }} Online</span>
-          <span class="text-danger"><i class="bi bi-circle-fill" style="font-size:.5rem"></i> {{ offline }} Offline</span>
+          <span class="text-success me-2"><i class="bi bi-circle-fill" style="font-size:.5rem"></i> <span id="kpi-online">{{ online }}</span> Online</span>
+          <span class="text-danger"><i class="bi bi-circle-fill" style="font-size:.5rem"></i> <span id="kpi-offline">{{ offline }}</span> Offline</span>
         </div>
       </div>
     </div>
@@ -33,7 +33,7 @@
         <div class="d-flex justify-content-between">
           <div>
             <div class="text-muted small">Missing Patches</div>
-            <div class="fs-2 fw-bold">{{ missing_patches }}</div>
+            <div class="fs-2 fw-bold" id="kpi-missing-patches">{{ missing_patches }}</div>
           </div>
           <div class="omni-stat-icon text-warning"><i class="bi bi-patch-exclamation"></i></div>
         </div>
@@ -54,7 +54,7 @@
         <div class="d-flex justify-content-between">
           <div>
             <div class="text-muted small">Open Vulnerabilities</div>
-            <div class="fs-2 fw-bold">{{ total_vulns }}</div>
+            <div class="fs-2 fw-bold" id="kpi-total-vulns">{{ total_vulns }}</div>
           </div>
           <div class="omni-stat-icon text-danger"><i class="bi bi-shield-x"></i></div>
         </div>
@@ -75,7 +75,7 @@
         <div class="d-flex justify-content-between">
           <div>
             <div class="text-muted small">Endpoints Unknown</div>
-            <div class="fs-2 fw-bold">{{ unknown }}</div>
+            <div class="fs-2 fw-bold" id="kpi-unknown">{{ unknown }}</div>
           </div>
           <div class="omni-stat-icon text-info"><i class="bi bi-question-circle"></i></div>
         </div>

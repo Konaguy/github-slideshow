@@ -48,6 +48,8 @@ class PatchScanResult(db.Model):
     installed_at = db.Column(db.DateTime)
     scanned_at = db.Column(db.DateTime, default=datetime.utcnow)
     error_message = db.Column(db.Text)
+    approved = db.Column(db.Boolean, default=False)
+    approved_by = db.Column(db.String(80))
 
     @property
     def severity_badge(self):

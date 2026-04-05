@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Patch Approval Queue{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('patches.index') }}">Patches</a></li>
+<li class="breadcrumb-item active">Approval Queue</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0"><i class="bi bi-clipboard-check me-2"></i>Patch Approval Queue
+    <span class="badge bg-warning ms-2">{{ pending | length }}</span>
+  </h1>
+  <a href="{{ url_for('patches.index') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back to Patches
+  </a>
+</div>
+
+{% if pending %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0" id="approvalTable">
+      <thead>
+        <tr>
+          <th>Endpoint</th>
+          <th>KB ID</th>
+          <th>Title</th>
+          <th>Severity</th>
+          <th>Scanned</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in pending %}
+        <tr id="row-{{ r.id }}">
+          <td>
+            <a href="{{ url_for('endpoints.detail', endpoint_id=r.endpoint_id) }}" class="text-decoration-none">
+              <i class="bi bi-pc-display me-1 text-muted"></i>{{ r.endpoint.hostname }}
+            </a>
+          </td>
+          <td><code class="small">{{ r.kb_id }}</code></td>
+          <td class="small">{{ r.title or '—' }}</td>
+          <td><span class="badge bg-{{ r.severity_badge }}">{{ r.severity }}</span></td>
+          <td class="text-muted small">{{ r.scanned_at.strftime('%Y-%m-%d') if r.scanned_at else '—' }}</td>
+          <td>
+            <button class="btn btn-sm btn-success approve-btn" data-id="{{ r.id }}" title="Approve">
+              <i class="bi bi-check-lg"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger reject-btn ms-1" data-id="{{ r.id }}" title="Reject / dismiss">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-clipboard-check fs-1 d-block mb-3 text-success"></i>
+  <p>All caught up — no patches awaiting approval.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.approve-btn').forEach(btn => {
+  btn.addEventListener('click', async function() {
+    const id = this.dataset.id;
+    const resp = await fetch(`/patches/approve/${id}`, {
+      method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }
+    });
+    if (resp.ok) {
+      const row = document.getElementById(`row-${id}`);
+      row.classList.add('table-success');
+      row.querySelector('td:last-child').innerHTML = '<span class="badge bg-success">Approved</span>';
+    }
+  });
+});
+
+document.querySelectorAll('.reject-btn').forEach(btn => {
+  btn.addEventListener('click', async function() {
+    if (!confirm('Remove this patch from the queue?')) return;
+    const id = this.dataset.id;
+    const resp = await fetch(`/patches/reject/${id}`, {
+      method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }
+    });
+    if (resp.ok) {
+      document.getElementById(`row-${id}`).remove();
+    }
+  });
+});
+</script>
+{% endblock %}

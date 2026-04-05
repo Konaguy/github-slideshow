@@ -45,6 +45,9 @@ def create_app(config_name=None):
     from app.blueprints.settings import settings_bp
     from app.blueprints.audit import audit_bp
     from app.blueprints.search import search_bp
+    from app.blueprints.groups import groups_bp
+    from app.blueprints.notifications import notifications_bp
+    from app.blueprints.reports import reports_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -57,6 +60,9 @@ def create_app(config_name=None):
     app.register_blueprint(settings_bp, url_prefix="/settings")
     app.register_blueprint(audit_bp, url_prefix="/audit")
     app.register_blueprint(search_bp, url_prefix="/search")
+    app.register_blueprint(groups_bp, url_prefix="/groups")
+    app.register_blueprint(notifications_bp, url_prefix="/notifications")
+    app.register_blueprint(reports_bp, url_prefix="/reports")
 
     # SocketIO room management
     @socketio.on("join")

@@ -237,6 +237,136 @@ function relativeTime(isoString) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
+// ── Dark / light mode toggle ──────────────────────────────────────────────────
+
+function initThemeToggle() {
+  const root = document.getElementById('htmlRoot');
+  const toggleBtn = document.getElementById('themeToggle');
+  const icon = document.getElementById('themeIcon');
+  if (!root || !toggleBtn) return;
+
+  const THEME_KEY = 'omni_theme';
+
+  function applyTheme(theme) {
+    root.setAttribute('data-bs-theme', theme);
+    if (icon) {
+      icon.className = theme === 'dark' ? 'bi bi-moon-stars-fill' : 'bi bi-sun-fill';
+    }
+    localStorage.setItem(THEME_KEY, theme);
+  }
+
+  const saved = localStorage.getItem(THEME_KEY) || 'dark';
+  applyTheme(saved);
+
+  toggleBtn.addEventListener('click', () => {
+    const current = root.getAttribute('data-bs-theme');
+    applyTheme(current === 'dark' ? 'light' : 'dark');
+  });
+}
+
+// ── Notification bell ─────────────────────────────────────────────────────────
+
+function initNotifications() {
+  const badge = document.getElementById('notifBadge');
+  const itemsEl = document.getElementById('notifItems');
+  const markBtn = document.getElementById('markAllRead');
+  const dropdown = document.getElementById('notifDropdown');
+  if (!badge || !itemsEl) return;
+
+  async function fetchNotifs() {
+    try {
+      const resp = await fetch('/notifications/unread-count');
+      if (!resp.ok) return;
+      const data = await resp.json();
+      // Update badge
+      if (data.count > 0) {
+        badge.textContent = data.count > 99 ? '99+' : data.count;
+        badge.classList.remove('d-none');
+      } else {
+        badge.classList.add('d-none');
+      }
+      // Populate dropdown
+      if (data.recent && data.recent.length) {
+        itemsEl.innerHTML = data.recent.map(n => `
+          <li>
+            <a class="dropdown-item px-3 py-2 d-flex gap-2 align-items-start ${n.read ? '' : 'fw-semibold'}"
+               href="${n.link || '#'}">
+              <i class="bi ${iconForType(n.type)} mt-1 flex-shrink-0"></i>
+              <div>
+                <div class="small">${escHtml(n.title)}</div>
+                ${n.message ? `<div class="text-muted" style="font-size:0.75rem">${escHtml(n.message)}</div>` : ''}
+                <div class="text-muted" style="font-size:0.7rem">${n.created_at}</div>
+              </div>
+            </a>
+          </li>`).join('');
+      } else {
+        itemsEl.innerHTML = '<li class="px-3 py-2 text-muted small">No recent notifications</li>';
+      }
+    } catch (_) {}
+  }
+
+  function iconForType(t) {
+    return { success: 'bi-check-circle-fill text-success', warning: 'bi-exclamation-triangle-fill text-warning',
+             danger: 'bi-x-circle-fill text-danger', info: 'bi-info-circle-fill text-info' }[t] || 'bi-bell-fill';
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Load on dropdown open
+  if (dropdown) {
+    dropdown.addEventListener('show.bs.dropdown', fetchNotifs);
+  }
+
+  // Poll every 30s
+  fetchNotifs();
+  setInterval(fetchNotifs, 30000);
+
+  if (markBtn) {
+    markBtn.addEventListener('click', async () => {
+      await fetch('/notifications/mark-read', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrfToken() },
+      });
+      badge.classList.add('d-none');
+      itemsEl.innerHTML = '<li class="px-3 py-2 text-muted small">No recent notifications</li>';
+    });
+  }
+}
+
+// ── Dashboard live refresh ────────────────────────────────────────────────────
+
+function initDashboardRefresh() {
+  const kpiMap = {
+    'kpi-total-endpoints': 'total_endpoints',
+    'kpi-online': 'online',
+    'kpi-offline': 'offline',
+    'kpi-unknown': 'unknown',
+    'kpi-missing-patches': 'missing_patches',
+    'kpi-critical-patches': 'critical_patches',
+    'kpi-total-vulns': 'total_vulns',
+    'kpi-critical-vulns': 'critical_vulns',
+  };
+
+  const hasDashboardKPIs = Object.keys(kpiMap).some(id => document.getElementById(id));
+  if (!hasDashboardKPIs) return;
+
+  async function refreshKPIs() {
+    try {
+      const resp = await fetch('/api/kpis');
+      if (!resp.ok) return;
+      const data = await resp.json();
+      for (const [id, key] of Object.entries(kpiMap)) {
+        const el = document.getElementById(id);
+        if (el && data[key] !== undefined) el.textContent = data[key];
+      }
+    } catch (_) {}
+  }
+
+  setInterval(refreshKPIs, 30000);
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -246,6 +376,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initRowLinks();
   initPingButtons();
   initCopyButtons();
+  initThemeToggle();
+  initNotifications();
+  initDashboardRefresh();
 
   // Activate Bootstrap tooltips (skip nav links — managed by initSidebar)
   document.querySelectorAll('[title]:not(.omni-nav-link)').forEach(el => {

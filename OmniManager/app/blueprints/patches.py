@@ -162,6 +162,38 @@ def scan_all():
     return redirect(url_for("patches.index"))
 
 
+@patches_bp.route("/approval-queue")
+@login_required
+def approval_queue():
+    pending = PatchScanResult.query.filter_by(status="missing", approved=False).order_by(
+        PatchScanResult.scanned_at.desc()
+    ).all()
+    return render_template("patches/approval.html", pending=pending)
+
+
+@patches_bp.route("/approve/<int:result_id>", methods=["POST"])
+@login_required
+def approve(result_id):
+    from flask_login import current_user
+    result = db.get_or_404(PatchScanResult, result_id)
+    result.approved = True
+    result.approved_by = current_user.username
+    db.session.commit()
+    log_action("patch.approve", object_type="patch", object_id=result_id,
+               detail=f"KB{result.kb_id} approved for endpoint {result.endpoint_id}")
+    return jsonify({"ok": True})
+
+
+@patches_bp.route("/reject/<int:result_id>", methods=["POST"])
+@login_required
+def reject(result_id):
+    result = db.get_or_404(PatchScanResult, result_id)
+    db.session.delete(result)
+    db.session.commit()
+    log_action("patch.reject", object_type="patch", object_id=result_id)
+    return jsonify({"ok": True})
+
+
 @patches_bp.route("/dismiss/<int:result_id>", methods=["POST"])
 @login_required
 def dismiss(result_id):

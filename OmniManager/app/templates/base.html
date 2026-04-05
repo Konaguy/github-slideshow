@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en" data-bs-theme="dark" id="htmlRoot">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -55,6 +55,16 @@
     <li>
       <a href="{{ url_for('rdp.index') }}" class="omni-nav-link {% if request.blueprint == 'rdp' %}active{% endif %}">
         <i class="bi bi-display"></i><span>RDP</span>
+      </a>
+    </li>
+    <li>
+      <a href="{{ url_for('groups.index') }}" class="omni-nav-link {% if request.blueprint == 'groups' %}active{% endif %}">
+        <i class="bi bi-collection"></i><span>Groups</span>
+      </a>
+    </li>
+    <li>
+      <a href="{{ url_for('reports.index') }}" class="omni-nav-link {% if request.blueprint == 'reports' %}active{% endif %}">
+        <i class="bi bi-file-earmark-bar-graph"></i><span>Reports</span>
       </a>
     </li>
 
@@ -123,6 +133,29 @@
       <a href="{{ url_for('api.stats') }}" class="btn btn-sm btn-outline-secondary" target="_blank" title="API Stats">
         <i class="bi bi-braces"></i>
       </a>
+      <!-- Dark/light mode toggle -->
+      <button class="btn btn-sm btn-outline-secondary" id="themeToggle" title="Toggle theme">
+        <i class="bi bi-moon-stars-fill" id="themeIcon"></i>
+      </button>
+      <!-- Notification bell -->
+      <div class="dropdown" id="notifDropdown">
+        <button class="btn btn-sm btn-outline-secondary position-relative" data-bs-toggle="dropdown"
+                aria-expanded="false" id="notifBell" title="Notifications">
+          <i class="bi bi-bell-fill"></i>
+          <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
+                id="notifBadge">0</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end p-0" style="min-width:320px;max-width:380px" id="notifList">
+          <li class="px-3 py-2 d-flex justify-content-between align-items-center border-bottom">
+            <strong class="small">Notifications</strong>
+            <a href="{{ url_for('notifications.index') }}" class="small text-decoration-none">View all</a>
+          </li>
+          <li id="notifItems"><li class="px-3 py-2 text-muted small">Loading…</li></li>
+          <li class="border-top px-3 py-2">
+            <button class="btn btn-sm btn-link p-0 text-muted" id="markAllRead">Mark all read</button>
+          </li>
+        </ul>
+      </div>
     </div>
   </header>
 

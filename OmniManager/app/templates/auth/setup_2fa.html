@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Setup Two-Factor Authentication{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('auth.profile') }}">Profile</a></li>
+<li class="breadcrumb-item active">Setup 2FA</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    {% if current_user.totp_enabled %}
+    <div class="card">
+      <div class="card-header"><h5 class="mb-0"><i class="bi bi-shield-check me-2 text-success"></i>2FA is Enabled</h5></div>
+      <div class="card-body">
+        <p class="text-muted">Two-factor authentication is currently active on your account.</p>
+        <form method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="disable">
+          <button type="submit" class="btn btn-outline-danger"
+                  data-confirm="Are you sure you want to disable two-factor authentication?">
+            <i class="bi bi-shield-x me-1"></i>Disable 2FA
+          </button>
+        </form>
+      </div>
+    </div>
+    {% else %}
+    <div class="card">
+      <div class="card-header"><h5 class="mb-0"><i class="bi bi-shield-lock me-2"></i>Enable Two-Factor Authentication</h5></div>
+      <div class="card-body">
+        <ol class="mb-4">
+          <li class="mb-3">Install an authenticator app (Google Authenticator, Authy, etc.)</li>
+          <li class="mb-3">
+            Scan this QR code:
+            <div class="text-center my-3">
+              <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR Code" class="rounded border p-2 bg-white" style="max-width:200px">
+            </div>
+            <div class="text-center">
+              <small class="text-muted">Or enter manually: <code>{{ raw_secret }}</code></small>
+            </div>
+          </li>
+          <li>Enter the 6-digit code from your app to confirm:</li>
+        </ol>
+
+        <form method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="raw_secret" value="{{ raw_secret }}">
+          <div class="mb-3">
+            <input type="text" name="token" class="form-control text-center form-control-lg"
+                   placeholder="000000" maxlength="6" inputmode="numeric"
+                   pattern="[0-9]{6}" autocomplete="one-time-code" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-shield-check me-1"></i>Verify & Enable 2FA
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

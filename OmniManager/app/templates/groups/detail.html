@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Group: {{ group.name }}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('groups.index') }}">Groups</a></li>
+<li class="breadcrumb-item active">{{ group.name }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">
+    <span style="color:{{ group.color }}"><i class="bi bi-circle-fill me-2" style="font-size:.6rem;vertical-align:middle"></i></span>
+    {{ group.name }}
+    <span class="badge bg-secondary ms-2">{{ group.members | length }} member(s)</span>
+  </h1>
+  <div class="d-flex gap-2">
+    <form method="POST" action="{{ url_for('groups.scan_patches', group_id=group.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-outline-warning btn-sm"
+              data-confirm="Scan all online endpoints in this group for missing patches?">
+        <i class="bi bi-search me-1"></i>Scan Patches
+      </button>
+    </form>
+    <form method="POST" action="{{ url_for('groups.delete', group_id=group.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-outline-danger btn-sm"
+              data-confirm="Delete group '{{ group.name }}'? Endpoints are not deleted.">
+        <i class="bi bi-trash me-1"></i>Delete
+      </button>
+    </form>
+  </div>
+</div>
+
+{% if group.description %}
+<p class="text-muted mb-4">{{ group.description }}</p>
+{% endif %}
+
+<div class="row g-4">
+  <!-- Current members -->
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">Current Members</h6></div>
+      <div class="table-responsive">
+        {% if group.members %}
+        <table class="table table-hover mb-0">
+          <tbody>
+            {% for ep in group.members %}
+            <tr>
+              <td>
+                <a href="{{ url_for('endpoints.detail', endpoint_id=ep.id) }}" class="text-decoration-none">
+                  <i class="bi bi-pc-display me-1 text-muted"></i>{{ ep.hostname }}
+                </a>
+              </td>
+              <td><code class="small">{{ ep.ip_address }}</code></td>
+              <td><span class="badge bg-{{ ep.status_badge }}">{{ ep.status }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="p-3 text-muted small">No members yet. Add endpoints below.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit members -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">Update Members</h6></div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('groups.update_members', group_id=group.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <p class="text-muted small mb-2">Check endpoints to include in this group:</p>
+          <div style="max-height:320px;overflow-y:auto" class="border rounded p-2">
+            {% set member_ids = group.members | map(attribute='id') | list %}
+            {% for ep in all_endpoints %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="endpoint_ids"
+                     value="{{ ep.id }}" id="ep{{ ep.id }}"
+                     {% if ep.id in member_ids %}checked{% endif %}>
+              <label class="form-check-label small" for="ep{{ ep.id }}">
+                <span class="badge bg-{{ ep.status_badge }} me-1">{{ ep.status }}</span>
+                {{ ep.hostname }}
+                <span class="text-muted">({{ ep.ip_address }})</span>
+              </label>
+            </div>
+            {% endfor %}
+          </div>
+          <button type="submit" class="btn btn-primary mt-3">Save Members</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

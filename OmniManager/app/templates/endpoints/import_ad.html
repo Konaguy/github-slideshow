@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Import from Active Directory{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('endpoints.index') }}">Endpoints</a></li>
+<li class="breadcrumb-item active">Import from AD</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Import from Active Directory</h5>
+      </div>
+      <div class="card-body">
+        <p class="text-muted small mb-4">
+          Connect to an LDAP/AD server to bulk-import computer objects as endpoints.
+          Requires the <code>ldap3</code> package (<code>pip install ldap3</code>).
+        </p>
+        <form method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">AD/LDAP Server <span class="text-danger">*</span></label>
+            <input type="text" name="server" class="form-control" required
+                   placeholder="192.168.1.10  or  dc.corp.local">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Base DN <span class="text-danger">*</span></label>
+            <input type="text" name="base_dn" class="form-control" required
+                   placeholder="DC=corp,DC=local">
+            <div class="form-text text-muted">e.g. <code>OU=Computers,DC=corp,DC=local</code></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Bind User (optional)</label>
+            <input type="text" name="bind_user" class="form-control"
+                   placeholder="administrator@corp.local">
+          </div>
+          <div class="mb-4">
+            <label class="form-label">Bind Password</label>
+            <input type="password" name="bind_pass" class="form-control" autocomplete="off">
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-cloud-download me-1"></i>Import Endpoints
+            </button>
+            <a href="{{ url_for('endpoints.index') }}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

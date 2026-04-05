@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
 from app.extensions import db, limiter
 from app.models.user import User
@@ -21,6 +21,10 @@ def login():
 
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
+            if user.totp_enabled:
+                session["pending_2fa_user_id"] = user.id
+                session["pending_2fa_remember"] = remember
+                return redirect(url_for("auth.verify_2fa"))
             user.last_login = datetime.utcnow()
             db.session.commit()
             login_user(user, remember=remember)
@@ -208,3 +212,72 @@ def reset_password(token):
         return redirect(url_for("auth.login"))
 
     return render_template("auth/reset_password.html", token=token)
+
+
+# ── 2FA ───────────────────────────────────────────────────────────────────────
+
+@auth_bp.route("/verify-2fa", methods=["GET", "POST"])
+def verify_2fa():
+    user_id = session.get("pending_2fa_user_id")
+    if not user_id:
+        return redirect(url_for("auth.login"))
+    user = db.session.get(User, user_id)
+    if not user:
+        session.pop("pending_2fa_user_id", None)
+        return redirect(url_for("auth.login"))
+
+    if request.method == "POST":
+        token = request.form.get("token", "").strip().replace(" ", "")
+        if user.verify_totp(token):
+            session.pop("pending_2fa_user_id", None)
+            remember = session.pop("pending_2fa_remember", False)
+            user.last_login = datetime.utcnow()
+            db.session.commit()
+            login_user(user, remember=remember)
+            log_action("login.success", object_type="user", object_id=user.id,
+                       detail=f"User '{user.username}' logged in (2FA)")
+            flash(f"Welcome back, {user.username}!", "success")
+            return redirect(url_for("dashboard.index"))
+        flash("Invalid authenticator code.", "danger")
+
+    return render_template("auth/verify_2fa.html")
+
+
+@auth_bp.route("/setup-2fa", methods=["GET", "POST"])
+@login_required
+def setup_2fa():
+    import pyotp, qrcode, io, base64
+
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "disable":
+            current_user.totp_secret = None
+            current_user.totp_enabled = False
+            db.session.commit()
+            log_action("2fa.disable", object_type="user", object_id=current_user.id)
+            flash("Two-factor authentication disabled.", "info")
+            return redirect(url_for("auth.profile"))
+
+        token = request.form.get("token", "").strip().replace(" ", "")
+        raw_secret = request.form.get("raw_secret", "")
+        totp = pyotp.TOTP(raw_secret)
+        if totp.verify(token, valid_window=1):
+            current_user.set_totp_secret(raw_secret)
+            current_user.totp_enabled = True
+            db.session.commit()
+            log_action("2fa.enable", object_type="user", object_id=current_user.id)
+            flash("Two-factor authentication enabled!", "success")
+            return redirect(url_for("auth.profile"))
+        flash("Invalid code — please try again.", "danger")
+        return redirect(url_for("auth.setup_2fa"))
+
+    raw_secret = pyotp.random_base32()
+    totp_uri = pyotp.totp.TOTP(raw_secret).provisioning_uri(
+        name=current_user.email,
+        issuer_name="OmniManager",
+    )
+    img = qrcode.make(totp_uri)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    qr_b64 = base64.b64encode(buf.getvalue()).decode()
+    return render_template("auth/setup_2fa.html", raw_secret=raw_secret, qr_b64=qr_b64)
