@@ -1,0 +1,517 @@
+{
+  "system": "CyberShield Analytics",
+  "version": "1.0.0",
+  "description": "Multi-agent cybersecurity orchestration system. Import this file into any bot framework, LangChain, CrewAI, AutoGen, or Claude API integration. Each agent block contains a complete system prompt path, tool list, trigger conditions, and escalation routing.",
+  "coordinator": "sarge",
+
+  "threat_level_logic": {
+    "GREEN": "No P1 or P2 findings open. All agents nominal.",
+    "YELLOW": "1-2 P2 findings open. No active exploitation confirmed.",
+    "ORANGE": "1+ P1 findings open. Or: active threat indicator with unpatched critical CVE.",
+    "RED": "Active incident declared. Confirmed breach indicator. IncidentBot activated."
+  },
+
+  "agents": {
+    "sarge": {
+      "name": "Sarge",
+      "role": "IT Security Threat Manager — Brain & Coordinator",
+      "tier": 0,
+      "system_prompt_file": "agents/sarge-system-prompt.md",
+      "model_recommended": "claude-opus-4-7",
+      "triggers": [
+        "any_agent_escalation",
+        "daily_08:00_briefing",
+        "operator_direct_message",
+        "threat_level_change"
+      ],
+      "outputs": [
+        "daily_briefing",
+        "task_assignments",
+        "incident_declarations",
+        "operator_alerts"
+      ],
+      "escalation_path": "operator",
+      "tools": [
+        "read_all_agent_reports",
+        "write_task_assignments",
+        "set_threat_level",
+        "notify_operator",
+        "activate_incidentbot"
+      ]
+    },
+
+    "netwatch": {
+      "name": "NetWatch",
+      "role": "Network Monitor",
+      "tier": 1,
+      "system_prompt_file": "agents/netwatch-system-prompt.md",
+      "model_recommended": "claude-sonnet-4-6",
+      "triggers": [
+        "wazuh_network_alert",
+        "sysmon_event_id_3",
+        "scheduled_daily_traffic_review",
+        "dns_anomaly_threshold_exceeded",
+        "firewall_alert"
+      ],
+      "outputs": [
+        "network_anomaly_alerts",
+        "daily_traffic_summary",
+        "ioc_blocklist_updates"
+      ],
+      "escalation_path": "sarge",
+      "p1_conditions": [
+        "known_c2_connection",
+        "internal_port_scan_over_10_hosts_60_seconds",
+        "tor_exit_node_connection",
+        "dns_tunneling_detected",
+        "large_outbound_transfer_unknown_ip_over_100mb",
+        "workstation_to_workstation_smb"
+      ],
+      "tools": [
+        "wazuh_api_query",
+        "shodan_ip_lookup",
+        "virustotal_domain_check",
+        "otx_threat_intel",
+        "winrm_netstat_query",
+        "firewall_rule_request"
+      ]
+    },
+
+    "vulnscan": {
+      "name": "VulnScan",
+      "role": "Vulnerability Monitor",
+      "tier": 1,
+      "system_prompt_file": "agents/vulnscan-system-prompt.md",
+      "model_recommended": "claude-sonnet-4-6",
+      "triggers": [
+        "scheduled_weekly_sunday_0200",
+        "cisa_kev_daily_pull",
+        "new_asset_discovered",
+        "wazuh_vulnerability_alert",
+        "microsoft_patch_tuesday"
+      ],
+      "outputs": [
+        "vulnerability_findings",
+        "risk_scored_cve_list",
+        "ironclad_remediation_tasks",
+        "weekly_vuln_summary_to_sarge"
+      ],
+      "escalation_path": "ironclad",
+      "secondary_escalation": "sarge",
+      "p1_conditions": [
+        "cisa_kev_match_on_any_asset",
+        "cvss_9_plus_with_public_exploit",
+        "zero_day_advisory_for_software_in_inventory"
+      ],
+      "tools": [
+        "wazuh_vulnerability_module",
+        "nvd_api_query",
+        "cisa_kev_feed",
+        "winrm_get_hotfix",
+        "winrm_get_installed_software",
+        "shodan_external_exposure_check"
+      ]
+    },
+
+    "ironclad": {
+      "name": "Ironclad",
+      "role": "Sr. Security Engineer + Endpoint DLP",
+      "tier": 1,
+      "system_prompt_file": "agents/ironclad-system-prompt.md",
+      "model_recommended": "claude-opus-4-7",
+      "triggers": [
+        "vulnscan_finding_received",
+        "wazuh_dlp_alert",
+        "sysmon_usb_insertion",
+        "large_file_upload_detected",
+        "credential_pattern_detected",
+        "patchmaster_deployment_request",
+        "after_hours_sensitive_file_access"
+      ],
+      "outputs": [
+        "remediation_plans",
+        "dlp_alerts",
+        "compensating_controls",
+        "patch_verification_results",
+        "endpoint_hardening_status"
+      ],
+      "escalation_path": "sarge",
+      "p1_conditions": [
+        "active_exfiltration_confirmed",
+        "tier1_data_usb_transfer",
+        "credential_mass_dump",
+        "ransomware_file_extension_detected"
+      ],
+      "tools": [
+        "wazuh_active_response",
+        "winrm_remote_execute",
+        "ad_group_policy_push",
+        "firewall_rule_apply",
+        "endpoint_isolate",
+        "file_quarantine"
+      ]
+    },
+
+    "complybot": {
+      "name": "ComplyBot",
+      "role": "Compliance Monitor",
+      "tier": 2,
+      "system_prompt_file": "agents/complybot-system-prompt.md",
+      "model_recommended": "claude-sonnet-4-6",
+      "triggers": [
+        "scheduled_daily_compliance_check",
+        "audit_deadline_threshold_30_days",
+        "control_status_change",
+        "new_framework_activated",
+        "wazuh_sca_scan_complete"
+      ],
+      "outputs": [
+        "daily_compliance_scorecard",
+        "drift_alerts",
+        "audit_reports",
+        "evidence_collection_updates"
+      ],
+      "escalation_path": "sarge",
+      "frameworks_supported": [
+        "SOC2",
+        "HIPAA",
+        "PCI-DSS-v4",
+        "GDPR",
+        "NIST-CSF-2.0",
+        "CIS-Controls-v8"
+      ],
+      "tools": [
+        "wazuh_sca_query",
+        "winrm_policy_audit",
+        "ad_password_policy_query",
+        "audit_log_export",
+        "evidence_store_write"
+      ]
+    },
+
+    "patchmaster": {
+      "name": "PatchMaster",
+      "role": "Patch Management",
+      "tier": 2,
+      "system_prompt_file": "agents/patchmaster-system-prompt.md",
+      "model_recommended": "claude-haiku-4-5",
+      "triggers": [
+        "vulnscan_remediation_task",
+        "microsoft_patch_tuesday_second_tuesday",
+        "scheduled_weekly_patch_report",
+        "cisa_kev_tier1_patch_required",
+        "new_third_party_app_version_available"
+      ],
+      "outputs": [
+        "patch_deployment_schedule",
+        "patch_status_report",
+        "exception_requests",
+        "verification_confirmations"
+      ],
+      "escalation_path": "sarge",
+      "sla_hours": {
+        "tier1_emergency": 24,
+        "tier2_critical": 168,
+        "tier3_high": 720,
+        "tier4_medium": 2160,
+        "tier5_low": 2160
+      },
+      "tools": [
+        "winrm_install_windowsupdate",
+        "winrm_get_hotfix",
+        "wsus_api",
+        "intune_api",
+        "wazuh_active_response",
+        "patch_changelog_lookup"
+      ]
+    },
+
+    "certsentry": {
+      "name": "CertSentry",
+      "role": "Certificate Monitor",
+      "tier": 2,
+      "system_prompt_file": "agents/certsentry-system-prompt.md",
+      "model_recommended": "claude-haiku-4-5",
+      "triggers": [
+        "scheduled_daily_cert_check",
+        "new_domain_discovered",
+        "ssl_error_detected",
+        "cert_expiry_threshold_30_14_7_3_days"
+      ],
+      "outputs": [
+        "certificate_inventory",
+        "expiry_alerts",
+        "tls_misconfiguration_findings",
+        "renewal_status_updates"
+      ],
+      "escalation_path": "sarge",
+      "alert_thresholds_days": [30, 14, 7, 3, 0],
+      "tools": [
+        "ssl_connect_check",
+        "winrm_cert_store_query",
+        "certbot_renew",
+        "crt_sh_ct_log_query",
+        "domain_cert_scan"
+      ]
+    },
+
+    "cloudguard": {
+      "name": "CloudGuard",
+      "role": "Cloud Security Monitor",
+      "tier": 2,
+      "system_prompt_file": "agents/cloudguard-system-prompt.md",
+      "model_recommended": "claude-sonnet-4-6",
+      "triggers": [
+        "scheduled_daily_cloud_posture_check",
+        "cloudtrail_alert",
+        "s3_public_access_event",
+        "iam_admin_created",
+        "billing_anomaly_threshold",
+        "new_resource_provisioned",
+        "scheduled_weekly_shodan_scan"
+      ],
+      "outputs": [
+        "cloud_posture_report",
+        "misconfiguration_alerts",
+        "anomaly_alerts",
+        "iam_access_review"
+      ],
+      "escalation_path": "sarge",
+      "p1_conditions": [
+        "s3_bucket_public_read_write",
+        "root_account_login",
+        "cloudtrail_disabled",
+        "security_group_0000_ssh_rdp",
+        "billing_spike_over_200_percent"
+      ],
+      "platforms": ["AWS", "Azure", "GCP", "Hostinger", "GitHub", "M365"],
+      "tools": [
+        "aws_api_readonly",
+        "azure_api_readonly",
+        "gcp_api_readonly",
+        "hostinger_api",
+        "github_api_readonly",
+        "shodan_api",
+        "cloudtrail_query",
+        "billing_api_query"
+      ]
+    },
+
+    "incidentbot": {
+      "name": "IncidentBot",
+      "role": "Incident Response Coordinator",
+      "tier": 3,
+      "system_prompt_file": "agents/incidentbot-system-prompt.md",
+      "model_recommended": "claude-opus-4-7",
+      "triggers": [
+        "sarge_declares_incident",
+        "ransomware_detected",
+        "confirmed_exfiltration",
+        "sev1_finding_from_any_agent",
+        "operator_manual_trigger"
+      ],
+      "outputs": [
+        "incident_tickets",
+        "real_time_timeline",
+        "stakeholder_notifications",
+        "containment_orders_to_agents",
+        "post_mortem_reports"
+      ],
+      "escalation_path": "sarge_then_operator",
+      "playbooks": [
+        "ransomware",
+        "data_exfiltration",
+        "compromised_account",
+        "malware_contained",
+        "phishing_attack"
+      ],
+      "severity_levels": ["SEV1", "SEV2", "SEV3", "SEV4"],
+      "tools": [
+        "send_stakeholder_notification",
+        "open_incident_ticket",
+        "write_timeline_entry",
+        "order_host_isolation",
+        "order_account_disable",
+        "order_ip_block",
+        "forensic_snapshot_request"
+      ]
+    },
+
+    "darkeye": {
+      "name": "DarkEye",
+      "role": "Dark Web & Threat Intelligence",
+      "tier": 3,
+      "system_prompt_file": "agents/darkeye-system-prompt.md",
+      "model_recommended": "claude-sonnet-4-6",
+      "triggers": [
+        "scheduled_daily_breach_check",
+        "scheduled_daily_ioc_feed_update",
+        "scheduled_weekly_shodan_external_audit",
+        "new_ransomware_group_victim_listing",
+        "credential_found_in_breach_data"
+      ],
+      "outputs": [
+        "daily_intel_brief",
+        "credential_exposure_alerts",
+        "ioc_updates_to_netwatch",
+        "brand_monitoring_alerts",
+        "threat_actor_advisories"
+      ],
+      "escalation_path": "sarge",
+      "p1_conditions": [
+        "organization_named_on_ransomware_portal",
+        "active_credential_sale_detected",
+        "confirmed_data_for_sale",
+        "threat_actor_targeting_org_specifically"
+      ],
+      "intel_feeds": [
+        "CISA_KEV",
+        "AlienVault_OTX",
+        "Abuse.ch_URLhaus",
+        "Abuse.ch_MalwareBazaar",
+        "PhishTank",
+        "HIBP",
+        "Shodan",
+        "MITRE_ATT&CK"
+      ],
+      "tools": [
+        "hibp_domain_check",
+        "otx_feed_pull",
+        "urlhaus_ioc_query",
+        "malwarebazaar_hash_query",
+        "shodan_org_search",
+        "crt_sh_domain_monitor",
+        "phishtank_check"
+      ]
+    },
+
+    "idguard": {
+      "name": "IDGuard",
+      "role": "Identity & Access Monitor",
+      "tier": 3,
+      "system_prompt_file": "agents/idguard-system-prompt.md",
+      "model_recommended": "claude-sonnet-4-6",
+      "triggers": [
+        "windows_event_4728_4732_4756",
+        "windows_event_4720_new_account",
+        "windows_event_4625_failed_logon_threshold",
+        "windows_event_4648_explicit_cred",
+        "windows_event_4672_admin_logon",
+        "impossible_travel_detected",
+        "dormant_account_authentication",
+        "darkeye_credential_exposure_alert",
+        "scheduled_quarterly_access_review",
+        "mfa_gap_detected"
+      ],
+      "outputs": [
+        "identity_anomaly_alerts",
+        "mfa_compliance_report",
+        "access_review_reports",
+        "dormant_account_list",
+        "privilege_escalation_alerts"
+      ],
+      "escalation_path": "sarge",
+      "p1_conditions": [
+        "impossible_travel_confirmed",
+        "domain_admin_added_outside_change_window",
+        "former_employee_account_active",
+        "admin_account_no_mfa",
+        "mass_failed_logins_password_spray"
+      ],
+      "ueba_detection_rules": [
+        "impossible_travel",
+        "brute_force",
+        "password_spray",
+        "privilege_escalation",
+        "after_hours_admin_activity",
+        "dormant_account_reactivation",
+        "lateral_movement_indicators",
+        "kerberoasting",
+        "insider_threat_data_staging"
+      ],
+      "tools": [
+        "ad_user_query",
+        "ad_group_query",
+        "ad_disable_account",
+        "ad_force_password_reset",
+        "azure_ad_signin_logs",
+        "wazuh_auth_events",
+        "geoip_lookup",
+        "winrm_local_admin_query"
+      ]
+    }
+  },
+
+  "data_flows": {
+    "vulnscan_to_ironclad": "All P1/P2 findings with full CVE context",
+    "vulnscan_to_sarge": "Weekly summary + all P1 immediate alerts",
+    "netwatch_to_sarge": "All P1 immediate + P2 within 1 hour",
+    "netwatch_to_darkeye": "Unknown external IPs for IOC enrichment",
+    "ironclad_to_sarge": "DLP alerts + remediation completion confirmations",
+    "ironclad_to_patchmaster": "Approved patch deployment requests",
+    "complybot_to_sarge": "Daily scorecard + drift alerts",
+    "patchmaster_to_sarge": "Weekly status + emergency tier1 completion",
+    "certsentry_to_sarge": "Expiry alerts per threshold",
+    "cloudguard_to_sarge": "All findings per severity",
+    "incidentbot_to_sarge": "Real-time incident status",
+    "incidentbot_to_ironclad": "Containment orders",
+    "incidentbot_to_idguard": "Account disable orders",
+    "darkeye_to_netwatch": "IOC blocklist updates",
+    "darkeye_to_idguard": "Credential exposure notifications",
+    "darkeye_to_sarge": "Daily intel brief + P1 alerts",
+    "idguard_to_sarge": "All anomaly alerts per severity"
+  },
+
+  "import_instructions": {
+    "claude_code": {
+      "steps": [
+        "Place cybershield/ directory in your project root",
+        "Claude Code auto-loads CLAUDE.md — system is immediately active",
+        "Invoke agents with @AgentName prefix in your message",
+        "Each agent's system_prompt_file is the context to load"
+      ]
+    },
+    "claude_api": {
+      "steps": [
+        "Load system_prompt_file content as the 'system' parameter in your API call",
+        "Set model per model_recommended field in each agent block",
+        "Use tool definitions from agent-tools.json",
+        "Chain agents by routing outputs per data_flows above"
+      ],
+      "example_code": "See /cybershield/config/api-integration-example.py"
+    },
+    "crewai": {
+      "steps": [
+        "Map each agent block to a CrewAI Agent() object",
+        "system_prompt_file content → Agent(backstory=...)",
+        "tools list → Agent(tools=[...])",
+        "escalation_path → Task routing",
+        "triggers → Task conditions"
+      ]
+    },
+    "autogen": {
+      "steps": [
+        "Map each agent to an AssistantAgent with system_message from system_prompt_file",
+        "Sarge = UserProxyAgent with human_input_mode='NEVER'",
+        "Use GroupChat with sarge as manager",
+        "trigger_conditions map to tool call routing"
+      ]
+    },
+    "langchain": {
+      "steps": [
+        "Each agent = LangChain Agent with system prompt from system_prompt_file",
+        "tools list maps to LangChain Tool objects",
+        "Orchestration via LangGraph with sarge as supervisor node",
+        "data_flows map to LangGraph edges"
+      ]
+    },
+    "sagemaker": {
+      "steps": [
+        "See /cybershield/sagemaker/pipeline.yaml for ML component definitions",
+        "Deploy anomaly-detection, threat-classification, and behavioral-analysis endpoints",
+        "Integrate inference endpoint URLs into netwatch and idguard tool configurations",
+        "Use EventBridge scheduled rules for trigger_conditions marked as 'scheduled_*'"
+      ]
+    }
+  }
+}

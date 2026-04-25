@@ -1,0 +1,329 @@
+# CyberShield Analytics — AWS SageMaker ML Pipeline
+# Deploy this when you have 50+ customers or need dedicated ML inference
+# at scale. For early-stage use, Anthropic API calls replace these models.
+#
+# This pipeline defines 3 ML models:
+#   1. anomaly-detector    → NetWatch + IDGuard (unusual traffic/behavior)
+#   2. threat-classifier   → Sarge (categorize alerts by type and severity)
+#   3. behavioral-analyzer → IDGuard (UEBA scoring)
+#
+# Prerequisites:
+#   - AWS account with SageMaker access
+#   - S3 bucket for training data and model artifacts
+#   - IAM role: SageMakerFullAccess + S3 read/write on your bucket
+#   - Training data in S3 (see data schema below each model)
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CyberShield Analytics ML Pipeline on AWS SageMaker
+
+Parameters:
+  S3BucketName:
+    Type: String
+    Description: S3 bucket for training data and model artifacts
+    Default: cybershield-ml-artifacts
+
+  SageMakerRoleArn:
+    Type: String
+    Description: IAM role ARN for SageMaker execution
+
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+    Default: dev
+
+  InstanceType:
+    Type: String
+    Description: Instance type for inference endpoints
+    Default: ml.t3.medium
+    AllowedValues:
+      - ml.t3.medium      # $0.05/hr — dev/test
+      - ml.m5.large       # $0.12/hr — small production
+      - ml.m5.xlarge      # $0.23/hr — medium production
+      - ml.c5.xlarge      # $0.19/hr — compute-optimized
+
+# ─────────────────────────────────────────────────────────────────
+# MODEL 1: ANOMALY DETECTOR
+# Used by: NetWatch (network traffic), IDGuard (user behavior)
+# Algorithm: Isolation Forest / SageMaker Random Cut Forest
+# Input: Time-series feature vectors
+# Output: Anomaly score (0-1) + is_anomaly flag
+# ─────────────────────────────────────────────────────────────────
+
+Resources:
+
+  AnomalyDetectorModel:
+    Type: AWS::SageMaker::Model
+    Properties:
+      ModelName: !Sub "cybershield-anomaly-detector-${Environment}"
+      ExecutionRoleArn: !Ref SageMakerRoleArn
+      PrimaryContainer:
+        Image: !Sub "382416733822.dkr.ecr.${AWS::Region}.amazonaws.com/randomcutforest:1"
+        ModelDataUrl: !Sub "s3://${S3BucketName}/models/anomaly-detector/model.tar.gz"
+        Environment:
+          num_trees: "100"
+          num_samples_per_tree: "512"
+          feature_dim: "20"
+
+  # Training data schema for anomaly detector (store in S3 as CSV):
+  # Fields (20 features):
+  #   bytes_out, bytes_in, packets_out, packets_in, duration_seconds,
+  #   dst_port, src_port, protocol_id, connection_count_per_src_per_min,
+  #   unique_dst_per_src_per_hour, dns_queries_per_min, hour_of_day,
+  #   day_of_week, is_weekend, user_login_count_per_hour,
+  #   failed_login_count_per_hour, unique_src_ips_per_hour,
+  #   file_access_count_per_hour, privilege_changes_per_day, process_count
+
+  AnomalyDetectorEndpointConfig:
+    Type: AWS::SageMaker::EndpointConfig
+    Properties:
+      EndpointConfigName: !Sub "cybershield-anomaly-config-${Environment}"
+      ProductionVariants:
+        - VariantName: primary
+          ModelName: !Ref AnomalyDetectorModel
+          InitialInstanceCount: 1
+          InstanceType: !Ref InstanceType
+          InitialVariantWeight: 1.0
+      DataCaptureConfig:
+        EnableCapture: true
+        InitialSamplingPercentage: 10
+        DestinationS3Uri: !Sub "s3://${S3BucketName}/data-capture/anomaly-detector/"
+        CaptureOptions:
+          - CaptureMode: Input
+          - CaptureMode: Output
+
+  AnomalyDetectorEndpoint:
+    Type: AWS::SageMaker::Endpoint
+    Properties:
+      EndpointName: !Sub "cybershield-anomaly-detector-${Environment}"
+      EndpointConfigName: !Ref AnomalyDetectorEndpointConfig
+
+# ─────────────────────────────────────────────────────────────────
+# MODEL 2: THREAT CLASSIFIER
+# Used by: Sarge (prioritize and route alerts)
+# Algorithm: XGBoost multi-class classification
+# Input: Alert feature vector
+# Output: threat_type, severity (1-4), confidence, mitre_tactic
+# ─────────────────────────────────────────────────────────────────
+
+  ThreatClassifierModel:
+    Type: AWS::SageMaker::Model
+    Properties:
+      ModelName: !Sub "cybershield-threat-classifier-${Environment}"
+      ExecutionRoleArn: !Ref SageMakerRoleArn
+      PrimaryContainer:
+        Image: !Sub "246618743249.dkr.ecr.${AWS::Region}.amazonaws.com/sagemaker-xgboost:1.7-1"
+        ModelDataUrl: !Sub "s3://${S3BucketName}/models/threat-classifier/model.tar.gz"
+        Environment:
+          SAGEMAKER_PROGRAM: inference.py
+          SAGEMAKER_SUBMIT_DIRECTORY: !Sub "s3://${S3BucketName}/models/threat-classifier/source.tar.gz"
+
+  # Training data schema for threat classifier (store in S3 as CSV):
+  # label (threat_type): 0=benign, 1=recon, 2=lateral_movement, 3=exfiltration,
+  #                       4=c2, 5=ransomware, 6=insider_threat, 7=credential_attack
+  # Features:
+  #   source_agent, event_type_id, bytes_transferred, connection_count,
+  #   external_ip_flag, known_bad_ip_flag, after_hours_flag,
+  #   admin_account_flag, new_account_flag, failed_auth_count,
+  #   unique_destinations, duration, protocol, port,
+  #   file_access_count, sensitive_data_flag, process_name_hash,
+  #   parent_process_hash, registry_change_count, network_connections_spawned
+
+  ThreatClassifierEndpointConfig:
+    Type: AWS::SageMaker::EndpointConfig
+    Properties:
+      EndpointConfigName: !Sub "cybershield-classifier-config-${Environment}"
+      ProductionVariants:
+        - VariantName: primary
+          ModelName: !Ref ThreatClassifierModel
+          InitialInstanceCount: 1
+          InstanceType: !Ref InstanceType
+          InitialVariantWeight: 1.0
+
+  ThreatClassifierEndpoint:
+    Type: AWS::SageMaker::Endpoint
+    Properties:
+      EndpointName: !Sub "cybershield-threat-classifier-${Environment}"
+      EndpointConfigName: !Ref ThreatClassifierEndpointConfig
+
+# ─────────────────────────────────────────────────────────────────
+# MODEL 3: BEHAVIORAL ANALYZER (UEBA)
+# Used by: IDGuard (user and entity behavior analytics)
+# Algorithm: Autoencoder neural network (reconstruction error = anomaly)
+# Input: User behavior feature vector (per user per hour)
+# Output: behavior_score (0-1), anomaly_flag, contributing_features
+# ─────────────────────────────────────────────────────────────────
+
+  BehavioralAnalyzerModel:
+    Type: AWS::SageMaker::Model
+    Properties:
+      ModelName: !Sub "cybershield-behavioral-analyzer-${Environment}"
+      ExecutionRoleArn: !Ref SageMakerRoleArn
+      PrimaryContainer:
+        Image: !Sub "763104351884.dkr.ecr.${AWS::Region}.amazonaws.com/pytorch-inference:2.1.0-cpu-py310"
+        ModelDataUrl: !Sub "s3://${S3BucketName}/models/behavioral-analyzer/model.tar.gz"
+        Environment:
+          SAGEMAKER_PROGRAM: inference.py
+
+  # Training data schema for behavioral analyzer (per-user hourly aggregates):
+  # user_id (hash), hour_of_day, day_of_week, login_count, logout_count,
+  # failed_login_count, unique_src_ips, countries_accessed,
+  # files_accessed_count, sensitive_files_accessed, bytes_uploaded,
+  # bytes_downloaded, email_sent_count, email_external_count,
+  # admin_actions_count, group_changes, service_accessed_count,
+  # vpn_connected_flag, after_hours_activity_minutes, application_list_hash
+
+  BehavioralAnalyzerEndpointConfig:
+    Type: AWS::SageMaker::EndpointConfig
+    Properties:
+      EndpointConfigName: !Sub "cybershield-behavioral-config-${Environment}"
+      ProductionVariants:
+        - VariantName: primary
+          ModelName: !Ref BehavioralAnalyzerModel
+          InitialInstanceCount: 1
+          InstanceType: !Ref InstanceType
+          InitialVariantWeight: 1.0
+
+  BehavioralAnalyzerEndpoint:
+    Type: AWS::SageMaker::Endpoint
+    Properties:
+      EndpointName: !Sub "cybershield-behavioral-analyzer-${Environment}"
+      EndpointConfigName: !Ref BehavioralAnalyzerEndpointConfig
+
+# ─────────────────────────────────────────────────────────────────
+# SCHEDULED RETRAINING PIPELINE
+# EventBridge triggers weekly retraining on fresh Wazuh log data
+# ─────────────────────────────────────────────────────────────────
+
+  RetrainingPipeline:
+    Type: AWS::SageMaker::Pipeline
+    Properties:
+      PipelineName: !Sub "cybershield-retraining-${Environment}"
+      PipelineDescription: Weekly retraining of all CyberShield ML models
+      RoleArn: !Ref SageMakerRoleArn
+      PipelineDefinition:
+        PipelineDefinitionBody: !Sub |
+          {
+            "Version": "2020-12-01",
+            "Steps": [
+              {
+                "Name": "PreprocessData",
+                "Type": "Processing",
+                "Arguments": {
+                  "ProcessingInputs": [
+                    {
+                      "InputName": "raw-logs",
+                      "S3Input": {
+                        "S3Uri": "s3://${S3BucketName}/raw-logs/wazuh/",
+                        "LocalPath": "/opt/ml/processing/input",
+                        "S3DataType": "S3Prefix",
+                        "S3InputMode": "File"
+                      }
+                    }
+                  ],
+                  "ProcessingOutputs": [
+                    {
+                      "OutputName": "processed-features",
+                      "S3Output": {
+                        "S3Uri": "s3://${S3BucketName}/processed/",
+                        "LocalPath": "/opt/ml/processing/output",
+                        "S3UploadMode": "EndOfJob"
+                      }
+                    }
+                  ],
+                  "AppSpecification": {
+                    "ImageUri": "763104351884.dkr.ecr.${AWS::Region}.amazonaws.com/pytorch-training:2.1.0-cpu-py310",
+                    "ContainerEntrypoint": ["python3", "/opt/ml/processing/preprocess.py"]
+                  },
+                  "ProcessingResources": {
+                    "ClusterConfig": {
+                      "InstanceCount": 1,
+                      "InstanceType": "ml.m5.large",
+                      "VolumeSizeInGB": 50
+                    }
+                  }
+                }
+              },
+              {
+                "Name": "TrainAnomalyDetector",
+                "Type": "Training",
+                "DependsOn": ["PreprocessData"],
+                "Arguments": {
+                  "AlgorithmSpecification": {
+                    "TrainingInputMode": "File",
+                    "TrainingImage": "382416733822.dkr.ecr.${AWS::Region}.amazonaws.com/randomcutforest:1"
+                  },
+                  "InputDataConfig": [
+                    {
+                      "ChannelName": "train",
+                      "DataSource": {
+                        "S3DataSource": {
+                          "S3Uri": "s3://${S3BucketName}/processed/anomaly/",
+                          "S3DataType": "S3Prefix"
+                        }
+                      }
+                    }
+                  ],
+                  "OutputDataConfig": {
+                    "S3OutputPath": "s3://${S3BucketName}/models/anomaly-detector/"
+                  },
+                  "ResourceConfig": {
+                    "InstanceCount": 1,
+                    "InstanceType": "ml.m5.large",
+                    "VolumeSizeInGB": 30
+                  },
+                  "HyperParameters": {
+                    "num_trees": "100",
+                    "num_samples_per_tree": "512",
+                    "feature_dim": "20"
+                  },
+                  "StoppingCondition": {
+                    "MaxRuntimeInSeconds": 3600
+                  }
+                }
+              }
+            ]
+          }
+
+  RetrainingSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "cybershield-weekly-retraining-${Environment}"
+      Description: Trigger CyberShield model retraining every Sunday at 01:00 UTC
+      ScheduleExpression: "cron(0 1 ? * SUN *)"
+      State: ENABLED
+      Targets:
+        - Arn: !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:pipeline/cybershield-retraining-${Environment}"
+          Id: RetrainingPipelineTarget
+          RoleArn: !Ref SageMakerRoleArn
+
+# ─────────────────────────────────────────────────────────────────
+# DATA INGESTION: Wazuh → S3 (for model training data)
+# ─────────────────────────────────────────────────────────────────
+# On your Hostinger VPS, configure Filebeat to ship Wazuh alerts to S3:
+#
+# /etc/filebeat/filebeat.yml:
+# output.s3:
+#   bucket: cybershield-ml-artifacts
+#   region: us-east-1
+#   path: raw-logs/wazuh/
+#   codec.format:
+#     string: '%{[message]}'
+#
+# Alternatively, use Logstash with the S3 output plugin.
+
+Outputs:
+  AnomalyDetectorEndpointName:
+    Value: !Sub "cybershield-anomaly-detector-${Environment}"
+    Description: "Use in NetWatch and IDGuard tool config as ANOMALY_ENDPOINT"
+
+  ThreatClassifierEndpointName:
+    Value: !Sub "cybershield-threat-classifier-${Environment}"
+    Description: "Use in Sarge tool config as CLASSIFIER_ENDPOINT"
+
+  BehavioralAnalyzerEndpointName:
+    Value: !Sub "cybershield-behavioral-analyzer-${Environment}"
+    Description: "Use in IDGuard tool config as BEHAVIORAL_ENDPOINT"
+
+  EstimatedMonthlyCost:
+    Value: "ml.t3.medium x3 endpoints = ~$108/month. Add training job costs (~$10-20/month)."
+    Description: "Cost estimate for dev/small-prod. Upgrade instance type for higher throughput."

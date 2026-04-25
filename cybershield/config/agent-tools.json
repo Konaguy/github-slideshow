@@ -1,0 +1,220 @@
+{
+  "description": "Tool definitions for CyberShield agents. Map these to actual API integrations, CLI commands, or MCP tools in your deployment environment.",
+  "version": "1.0.0",
+
+  "tool_categories": {
+    "endpoint_management": {
+      "winrm_remote_execute": {
+        "description": "Execute PowerShell commands on Windows endpoints via WinRM",
+        "auth": "Service account with WinRM access (Domain: CYBERSHIELD\\svc_cybershield)",
+        "transport": "HTTPS on port 5986 with certificate auth",
+        "example": "Invoke-Command -ComputerName {hostname} -Credential $cred -ScriptBlock { {powershell_command} }",
+        "used_by": ["ironclad", "patchmaster", "idguard", "netwatch", "vulnscan"],
+        "prerequisites": ["WinRM enabled on target", "Service account created", "WireGuard VPN tunnel active"]
+      },
+      "wazuh_active_response": {
+        "description": "Trigger Wazuh active response scripts on managed endpoints",
+        "api_endpoint": "https://wazuh-manager:55000/active-response",
+        "auth": "Wazuh API credentials",
+        "actions": ["restart-service", "firewall-drop", "host-deny", "disable-account", "win-kill-process"],
+        "used_by": ["ironclad", "netwatch", "patchmaster", "incidentbot"]
+      },
+      "endpoint_isolate": {
+        "description": "Network-isolate an endpoint (Wazuh active response or Defender ATP)",
+        "method_wazuh": "wazuh_active_response with firewall-drop all inbound/outbound except Wazuh",
+        "method_defender": "POST /api/machines/{machineId}/isolate",
+        "used_by": ["ironclad", "incidentbot"]
+      }
+    },
+
+    "threat_intelligence": {
+      "shodan_api": {
+        "description": "Query Shodan for external exposure and IP intelligence",
+        "base_url": "https://api.shodan.io",
+        "endpoints": {
+          "ip_lookup": "/shodan/host/{ip}?key={SHODAN_API_KEY}",
+          "org_search": "/shodan/host/search?query=org:\"{org_name}\"&key={SHODAN_API_KEY}",
+          "count": "/shodan/host/count?query={query}&key={SHODAN_API_KEY}"
+        },
+        "used_by": ["netwatch", "darkeye", "cloudguard"]
+      },
+      "virustotal_api": {
+        "description": "Check domains, IPs, and file hashes against VirusTotal",
+        "base_url": "https://www.virustotal.com/api/v3",
+        "endpoints": {
+          "ip_report": "/ip_addresses/{ip}",
+          "domain_report": "/domains/{domain}",
+          "file_report": "/files/{hash}"
+        },
+        "headers": {"x-apikey": "{VIRUSTOTAL_API_KEY}"},
+        "used_by": ["netwatch", "darkeye"]
+      },
+      "otx_feed": {
+        "description": "AlienVault OTX threat intelligence feed",
+        "base_url": "https://otx.alienvault.com/api/v1",
+        "endpoints": {
+          "indicator_ip": "/indicators/IPv4/{ip}/general",
+          "indicator_domain": "/indicators/domain/{domain}/general",
+          "indicator_hash": "/indicators/file/{hash}/general",
+          "subscribed_pulses": "/pulses/subscribed"
+        },
+        "headers": {"X-OTX-API-KEY": "{OTX_API_KEY}"},
+        "used_by": ["netwatch", "darkeye"]
+      },
+      "hibp_api": {
+        "description": "HaveIBeenPwned - check domain for breached accounts",
+        "base_url": "https://haveibeenpwned.com/api/v3",
+        "endpoints": {
+          "domain_breach": "/breaches",
+          "account_breach": "/breachedaccount/{account}",
+          "paste_search": "/pasteaccount/{account}"
+        },
+        "headers": {
+          "hibp-api-key": "{HIBP_API_KEY}",
+          "user-agent": "CyberShield-DarkEye/1.0"
+        },
+        "used_by": ["darkeye"]
+      },
+      "urlhaus_api": {
+        "description": "Abuse.ch URLhaus malicious URL database",
+        "base_url": "https://urlhaus-api.abuse.ch/v1",
+        "endpoints": {
+          "url_lookup": "/url/",
+          "host_lookup": "/host/",
+          "payload_lookup": "/payload/"
+        },
+        "used_by": ["darkeye", "netwatch"]
+      },
+      "malwarebazaar_api": {
+        "description": "Abuse.ch MalwareBazaar malware hash database",
+        "base_url": "https://mb-api.abuse.ch/api/v1/",
+        "method": "POST",
+        "used_by": ["darkeye"]
+      },
+      "cisa_kev": {
+        "description": "CISA Known Exploited Vulnerabilities catalog",
+        "feed_url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+        "pull_frequency": "daily",
+        "used_by": ["vulnscan", "darkeye", "patchmaster"]
+      },
+      "nvd_api": {
+        "description": "National Vulnerability Database CVE lookup",
+        "base_url": "https://services.nvd.nist.gov/rest/json/cves/2.0",
+        "rate_limit": "5 requests per 30 seconds without API key",
+        "used_by": ["vulnscan"]
+      }
+    },
+
+    "wazuh_platform": {
+      "wazuh_api_query": {
+        "description": "Query Wazuh Manager REST API for alerts, agents, and SCA results",
+        "base_url": "https://{WAZUH_MANAGER_IP}:55000",
+        "auth": "JWT token from /security/user/authenticate",
+        "endpoints": {
+          "alerts": "/alerts",
+          "agents": "/agents",
+          "sca_results": "/sca/{agent_id}/checks/{policy_id}",
+          "vulnerability": "/vulnerability/{agent_id}",
+          "active_response": "/active-response"
+        },
+        "used_by": ["sarge", "netwatch", "vulnscan", "ironclad", "complybot", "idguard"]
+      }
+    },
+
+    "active_directory": {
+      "ad_user_query": {
+        "description": "Query Active Directory for user accounts, groups, and attributes",
+        "method": "PowerShell via WinRM to Domain Controller",
+        "commands": {
+          "get_user": "Get-ADUser -Identity {samaccountname} -Properties *",
+          "get_group_members": "Get-ADGroupMember {groupname} | Get-ADUser",
+          "get_dormant_accounts": "Get-ADUser -Filter {LastLogonDate -lt $cutoff -and Enabled -eq $true} -Properties LastLogonDate",
+          "get_locked_accounts": "Search-ADAccount -LockedOut",
+          "get_admin_accounts": "Get-ADGroupMember 'Domain Admins'"
+        },
+        "used_by": ["idguard", "complybot", "incidentbot"]
+      },
+      "ad_disable_account": {
+        "description": "Disable an Active Directory user account",
+        "command": "Disable-ADAccount -Identity {samaccountname}",
+        "requires_authorization": "sarge_or_operator",
+        "log_to": "sarge + complybot_audit_trail",
+        "used_by": ["idguard", "incidentbot"]
+      },
+      "ad_force_password_reset": {
+        "description": "Force password reset on next login for an account",
+        "command": "Set-ADUser -Identity {samaccountname} -ChangePasswordAtLogon $true",
+        "used_by": ["idguard", "incidentbot"]
+      }
+    },
+
+    "cloud_platforms": {
+      "aws_api_readonly": {
+        "description": "AWS read-only API access for CloudGuard",
+        "auth": "IAM role with SecurityAudit managed policy",
+        "sdk": "boto3",
+        "key_services": ["s3", "iam", "ec2", "cloudtrail", "config", "guardduty", "securityhub", "ce"],
+        "required_iam_policy": "SecurityAudit + ReadOnlyAccess",
+        "used_by": ["cloudguard"]
+      },
+      "cloudtrail_query": {
+        "description": "Query AWS CloudTrail for API event history",
+        "sdk_call": "cloudtrail.lookup_events(LookupAttributes=[...])",
+        "athena_alternative": "Query S3-backed trail via Athena for large time ranges",
+        "used_by": ["cloudguard", "idguard"]
+      }
+    },
+
+    "certificate_management": {
+      "ssl_connect_check": {
+        "description": "Connect to host:port and extract certificate details",
+        "method": "Python ssl module or openssl CLI",
+        "cli_command": "openssl s_client -connect {hostname}:{port} -servername {hostname} < /dev/null 2>/dev/null | openssl x509 -noout -dates -subject -issuer",
+        "python_method": "ssl.create_default_context().wrap_socket()",
+        "used_by": ["certsentry"]
+      },
+      "certbot_renew": {
+        "description": "Renew Let's Encrypt certificate via certbot on Hostinger VPS",
+        "command": "certbot renew --cert-name {domain} --quiet",
+        "dry_run": "certbot renew --dry-run",
+        "requires_authorization": "operator_approval_before_prod_renewal",
+        "used_by": ["certsentry"]
+      },
+      "crt_sh_monitor": {
+        "description": "Query certificate transparency logs for domain monitoring",
+        "url": "https://crt.sh/?q=%.{domain}&output=json",
+        "use_case": "Detect new certs issued for lookalike domains (brand protection)",
+        "used_by": ["certsentry", "darkeye"]
+      }
+    },
+
+    "notification": {
+      "notify_operator": {
+        "description": "Send alert to operator via configured notification channel",
+        "channels_supported": ["email", "slack", "teams", "pagerduty", "sms"],
+        "priority_routing": {
+          "P1_SEV1": ["sms", "pagerduty", "slack", "email"],
+          "P2_SEV2": ["slack", "email"],
+          "P3_SEV3": ["slack"],
+          "briefing": ["email", "slack"]
+        },
+        "used_by": ["sarge", "incidentbot"]
+      }
+    }
+  },
+
+  "environment_variables_required": {
+    "WAZUH_MANAGER_IP": "IP of your Hostinger VPS running Wazuh Manager",
+    "WAZUH_API_USER": "Wazuh API username",
+    "WAZUH_API_PASSWORD": "Wazuh API password",
+    "WINRM_SERVICE_ACCOUNT": "Domain service account for WinRM (DOMAIN\\svc_cybershield)",
+    "WINRM_SERVICE_ACCOUNT_PASSWORD": "Service account password (store in secrets manager)",
+    "SHODAN_API_KEY": "From shodan.io account",
+    "VIRUSTOTAL_API_KEY": "From virustotal.com account",
+    "OTX_API_KEY": "From otx.alienvault.com account",
+    "HIBP_API_KEY": "From haveibeenpwned.com (paid API)",
+    "AWS_ROLE_ARN": "Read-only IAM role for CloudGuard",
+    "ANTHROPIC_API_KEY": "For Claude-powered agent LLM calls",
+    "NOTIFICATION_WEBHOOK": "Slack/Teams webhook URL for alerts"
+  }
+}
