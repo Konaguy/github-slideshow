@@ -5,24 +5,40 @@
 
 .DESCRIPTION
     Uses the Windows Update Agent COM API to find all missing security updates
-    and cumulative updates. Can run against the local machine or remote computers.
-    Outputs results to the console and optionally to a CSV file.
+    and cumulative updates. Designed to run locally on each machine (e.g. via
+    PDQ Deploy) and write per-machine CSV results to a central UNC share.
+    Can also run interactively against remote computers without PDQ.
 
 .PARAMETER ComputerName
     One or more computer names to query. Defaults to the local machine.
+    When deployed via PDQ Deploy, leave this at the default — PDQ runs the
+    script locally on each target, so it always queries itself.
+
+.PARAMETER ReportShare
+    UNC path of a central file share where each machine writes its own CSV.
+    The file is named  <COMPUTERNAME>_<YYYYMMDD>.csv  so reports from all
+    machines land in one folder without overwriting each other.
+    Example: \\fileserver\PatchReports
+    The share must be writable by the machine account (DOMAIN\PC$) or by the
+    PDQ Deploy service account — grant 'Modify' to 'Domain Computers' or the
+    specific service account on the share and NTFS permissions.
 
 .PARAMETER OutputPath
-    Optional path to export results as a CSV file.
+    Local path to export results as a CSV (alternative to ReportShare).
 
 .PARAMETER IncludeDrivers
     Include driver updates in results (excluded by default).
 
 .EXAMPLE
-    # Run against local machine
+    # PDQ Deploy step — each machine reports to the central share
+    .\Get-MissingWindowsUpdates.ps1 -ReportShare '\\fileserver\PatchReports'
+
+.EXAMPLE
+    # Interactive use against the local machine
     .\Get-MissingWindowsUpdates.ps1
 
 .EXAMPLE
-    # Run against multiple remote PCs and export to CSV
+    # Interactive use against multiple remote PCs with a local CSV
     .\Get-MissingWindowsUpdates.ps1 -ComputerName PC01,PC02,PC03 -OutputPath C:\Reports\MissingUpdates.csv
 
 .EXAMPLE
@@ -34,6 +50,9 @@
 param(
     [Parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
     [string[]]$ComputerName = $env:COMPUTERNAME,
+
+    [Parameter()]
+    [string]$ReportShare,
 
     [Parameter()]
     [string]$OutputPath,
@@ -224,6 +243,40 @@ end {
             $crit = ($_.Group | Where-Object { $_.Severity -eq 'Critical' }).Count
             Write-Host ("  {0,-20} {1,3} update(s), {2} Critical" -f $_.Name, $_.Count, $crit)
         }
+
+    # Write per-machine CSV to the central report share (PDQ Deploy mode)
+    if ($ReportShare) {
+        $datestamp = Get-Date -Format 'yyyyMMdd'
+        $reportFile = Join-Path $ReportShare "${env:COMPUTERNAME}_${datestamp}.csv"
+        try {
+            if (-not (Test-Path $ReportShare)) {
+                Write-Warning "Report share '$ReportShare' is not accessible from $env:COMPUTERNAME — check share permissions for DOMAIN\$($env:COMPUTERNAME)`$."
+            } else {
+                # Write a zero-row file so the aggregator knows this machine ran and was clean
+                if ($allResults.Count -eq 0) {
+                    [PSCustomObject]@{
+                        ComputerName   = $env:COMPUTERNAME
+                        Title          = 'FULLY PATCHED'
+                        KBArticleIDs   = 'N/A'
+                        Severity       = 'None'
+                        IsSecurity     = $false
+                        IsCumulative   = $false
+                        Categories     = 'N/A'
+                        SizeMB         = 0
+                        RebootRequired = $false
+                        PublishedDate  = 'N/A'
+                        UpdateID       = 'N/A'
+                    } | Export-Csv -Path $reportFile -NoTypeInformation -Encoding UTF8
+                } else {
+                    $allResults | Export-Csv -Path $reportFile -NoTypeInformation -Encoding UTF8
+                }
+                Write-Host "Report written to: $reportFile" -ForegroundColor Green
+            }
+        } catch {
+            Write-Warning "Failed to write report to share: $_"
+            exit 1   # Non-zero exit lets PDQ Deploy flag this step as failed
+        }
+    }
 
     if ($OutputPath) {
         try {
