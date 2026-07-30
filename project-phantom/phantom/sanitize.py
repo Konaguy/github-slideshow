@@ -121,7 +121,7 @@ _ENTROPY_MIN_SIZE = 64  # entropy is meaningless noise on tiny samples
 _TEXTUAL_EXTENSIONS = {".txt", ".csv", ".conf", ".md", ".json", ".ini", ".log", ".yaml", ".yml"}
 
 
-def _shannon_entropy(data: bytes) -> float:
+def shannon_entropy(data: bytes) -> float:
     if not data:
         return 0.0
     length = len(data)
@@ -135,7 +135,7 @@ def high_entropy_rule(relpath: str, content: bytes) -> Optional[Finding]:
     ext = Path(relpath).suffix.lower()
     if ext not in _TEXTUAL_EXTENSIONS:
         return None
-    entropy = _shannon_entropy(content)
+    entropy = shannon_entropy(content)
     if entropy >= _ENTROPY_THRESHOLD:
         return Finding(
             "high_entropy", "medium",

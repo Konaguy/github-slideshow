@@ -1,19 +1,23 @@
-"""Ties baseline + snapshot + backup + sanitize + policy + instance into the
-observe -> preserve -> destroy -> regenerate -> restore -> harden loop
-described in charter §1.1.
+"""Ties baseline + snapshot + backup + sanitize + policy + detection +
+forensics + fleet intel + instance into the observe -> decide -> preserve ->
+destroy -> regenerate -> restore -> harden loop described in charter §1.1.
 
 `PhantomInstance` is the single facade the CLI talks to.
 """
 from __future__ import annotations
 
 import calendar
-import shutil
+import hashlib
+import json
 import time
 from pathlib import Path
 from typing import Optional
 
 from phantom import baseline as baseline_mod
 from phantom.backup_store import BackupStore
+from phantom.detection import DetectionEngine
+from phantom.fleet import ThreatIntelFeed
+from phantom.forensics import ForensicVault
 from phantom.instance import LocalWorkspaceInstance
 from phantom.metrics import AuditLog, RegenerationReport
 from phantom.policy import RegenerationPolicy
@@ -27,20 +31,26 @@ DEFAULT_BASELINE_FILES = {
 
 
 class PhantomInstance:
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, feed_path: Optional[Path] = None, instance_id: str = "phantom-vm-0"):
         self.root = root
+        self.instance_id = instance_id
         self.baseline_dir = root / "baseline"
         self.instance = LocalWorkspaceInstance(root / "instance")
         self.backup = BackupStore(root / "backups")
-        self.evidence_dir = root / "evidence"
         self.audit = AuditLog(root / "audit.log")
         self.blocklist = Blocklist(root / "known_bad_hashes.json")
         self.quarantine = QuarantineStore(root / "quarantine")
         self.policy = RegenerationPolicy(root / "policy.json")
+        self.vault = ForensicVault(root / "forensic_vault")
+        self.detector = DetectionEngine(read_blob=self.backup.engine.read_blob)
+        # A feed outside this instance's root is the fleet-wide one; the
+        # default keeps a single instance self-contained for the basic demo.
+        self.feed = ThreatIntelFeed(feed_path if feed_path is not None else root / "threat_intel.jsonl")
 
     # -- provisioning ------------------------------------------------
 
-    def init(self, instance_id: str = "phantom-vm-0") -> None:
+    def init(self, instance_id: Optional[str] = None) -> None:
+        instance_id = instance_id or self.instance_id
         baseline_mod.create_baseline(self.baseline_dir, DEFAULT_BASELINE_FILES)
         self.audit.append("baseline_created", version="1.0.0")
 
@@ -56,7 +66,7 @@ class PhantomInstance:
         self.audit.append("policy_set", cadence=state.cadence, interval_seconds=state.interval_seconds)
         return state
 
-    def scheduled_check(self, now: Optional[float] = None, instance_id: str = "phantom-vm-0"):
+    def scheduled_check(self, now: Optional[float] = None, instance_id: Optional[str] = None):
         """Cron entrypoint for the "daily" cadence. No-op if not due yet."""
         if not self.policy.is_daily_due(now):
             return None
@@ -64,7 +74,7 @@ class PhantomInstance:
         self.policy.mark_regenerated(now if now is not None else report.finished_at)
         return report
 
-    def session_start(self, instance_id: str = "phantom-vm-0"):
+    def session_start(self, instance_id: Optional[str] = None):
         """Simulates a user starting a session. Regenerates first if the
         policy cadence is "per_session" -- moving-target defense that
         doesn't depend on any attack having been detected.
@@ -100,9 +110,8 @@ class PhantomInstance:
         user's files (a dropped ransom note, a payload disguised as a
         document) that would get scooped up by the next snapshot and, if
         restored blindly, re-infect the freshly regenerated instance. It
-        deliberately does not touch existing legitimate files -- there is
-        no detection/recovery story for already-encrypted data in this
-        prototype; that is a Phase 3 problem (§5.D AI-vs-AI Detection Engine).
+        deliberately does not touch existing files -- see
+        `simulate_encryption_attack` for the in-place-encryption variant.
         """
         planted = []
 
@@ -121,17 +130,126 @@ class PhantomInstance:
         self.audit.append("attack_simulated", planted_files=planted)
         return planted
 
+    def simulate_encryption_attack(self) -> list:
+        """Overwrite existing user files with high-entropy content in place.
+
+        This is the delta shape the detection engine (§5.D) is meant to
+        catch on behavioral signals alone -- mass rewrite plus an entropy
+        jump -- with no known-bad hash and no suspicious filename to match
+        on. Unlike `simulate_attack`, nothing here is pre-registered in the
+        blocklist: detection has to earn it.
+
+        Note the recovery story: the encrypted versions are what the *next*
+        snapshot captures, so recovery depends on regenerating from the
+        prior clean snapshot, not on sanitizing the current one.
+        """
+        import os
+
+        encrypted = []
+        for path in sorted(p for p in self.instance.data_dir.rglob("*") if p.is_file()):
+            path.write_bytes(os.urandom(2048))
+            encrypted.append(str(path.relative_to(self.instance.data_dir)))
+
+        self.audit.append("encryption_attack_simulated", encrypted_files=encrypted)
+        return encrypted
+
+    # -- detection (charter §5.D) ---------------------------------------
+
+    def detect(self, current=None):
+        """Score the most recent inter-snapshot delta for behavioral drift."""
+        snapshots = self.backup.engine.list_snapshots()
+        if not snapshots:
+            return None
+        current = current if current is not None else snapshots[-1]
+        index = next((i for i, s in enumerate(snapshots) if s.snapshot_id == current.snapshot_id), None)
+        previous = snapshots[index - 1] if index is not None and index > 0 else None
+
+        result = self.detector.evaluate(previous, current)
+        self.audit.append(
+            "detection_evaluated",
+            snapshot_id=current.snapshot_id,
+            score=result.score,
+            anomalous=result.is_anomalous,
+            signals=[s.name for s in result.signals],
+        )
+        return result
+
+    def detect_and_respond(self, share_intel: bool = True):
+        """Full §1.1 loop: observe -> decide -> regenerate -> harden the fleet.
+
+        Returns (detection_result, regeneration_report). The report is None
+        when the delta scored below the anomaly threshold.
+        """
+        result = self.detect()
+        if result is None or not result.is_anomalous:
+            return result, None
+
+        # Recover from the last snapshot taken BEFORE the anomalous one --
+        # the anomalous snapshot is the attacker's work, restoring it would
+        # just reinstate the damage.
+        snapshots = self.backup.engine.list_snapshots()
+        recovery_point = snapshots[-2] if len(snapshots) >= 2 else None
+
+        report = self.regenerate(
+            reason=f"detection: behavioral drift score {result.score:.2f}",
+            restore_from=recovery_point,
+        )
+        self._publish_indicators(share=share_intel)
+        return result, report
+
+    # -- fleet immunity (charter §5.H) ------------------------------------
+
+    def _publish_indicators(self, share: bool = True) -> list:
+        """Publish content hashes of locally-known-bad content to the fleet feed."""
+        local_hashes = self.blocklist.load()
+        if not local_hashes:
+            return []
+        fingerprint = hashlib.sha256(str(self.root).encode()).hexdigest()[:12]
+        published = self.feed.publish(
+            local_hashes, label="phantom.local-detection", source_fingerprint=fingerprint, share=share,
+        )
+        if published:
+            self.audit.append("intel_published", indicator_count=len(published), shared=share)
+        return published
+
+    def pull_fleet_intel(self) -> int:
+        """Fold fleet-published indicators into the local blocklist.
+
+        This is the "herd immunity" step: an instance that was never
+        attacked hardens against a payload another instance saw first.
+        Returns the number of newly-learned indicators.
+        """
+        feed_hashes = self.feed.hashes()
+        local_hashes = self.blocklist.load()
+        new_hashes = feed_hashes - local_hashes
+        if new_hashes:
+            merged = sorted(local_hashes | new_hashes)
+            self.blocklist.path.parent.mkdir(parents=True, exist_ok=True)
+            self.blocklist.path.write_text(json.dumps(merged, indent=2))
+            self.audit.append("fleet_intel_pulled", learned=len(new_hashes))
+        return len(new_hashes)
+
     # -- regeneration ---------------------------------------------------
 
-    def regenerate(self, reason: str, instance_id: str = "phantom-vm-0") -> RegenerationReport:
+    def regenerate(self, reason: str, instance_id: Optional[str] = None,
+                   restore_from=None) -> RegenerationReport:
+        """`restore_from` overrides the default "latest snapshot" recovery
+        point -- used when detection determines the latest snapshot itself
+        captured the attack (see `detect_and_respond`).
+        """
+        instance_id = instance_id or self.instance_id
         started_at = time.time()
         self.audit.append("regeneration_triggered", reason=reason)
 
-        # 1. Preserve evidence before destruction (charter §1.1 step 3).
-        evidence_path = self.evidence_dir / time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime())
-        if self.instance.data_dir.exists():
-            shutil.copytree(self.instance.data_dir, evidence_path / "data", dirs_exist_ok=True)
-        self.audit.append("evidence_preserved", path=str(evidence_path))
+        # 1. Preserve evidence before destruction (charter §1.1 step 3), into the
+        #    hash-chained forensic vault (§5.F) rather than a plain copy.
+        custody_entry = self.vault.capture(self.instance.data_dir, reason=reason, custodian=instance_id)
+        self.audit.append(
+            "evidence_preserved",
+            case_id=custody_entry.case_id,
+            content_digest=custody_entry.content_digest,
+            entry_hash=custody_entry.entry_hash,
+        )
 
         # 2. Verify the baseline is still trustworthy, then destroy + respawn.
         baseline_mod.verify_baseline(self.baseline_dir)
@@ -139,10 +257,10 @@ class PhantomInstance:
         self.instance.spawn_from_baseline(self.baseline_dir, instance_id)
         self.audit.append("instance_regenerated", instance_id=instance_id)
 
-        # 3. Restore only sanitized data from the latest snapshot (charter §1.1 step 6),
-        #    reading through the multi-region store so a single provider outage
-        #    doesn't block recovery (charter §6 Phase 2 "multi-region failover").
-        latest = self.backup.rapid_retrieve()
+        # 3. Restore only sanitized data (charter §1.1 step 6), reading through
+        #    the multi-region store so a single provider outage doesn't block
+        #    recovery (charter §6 Phase 2 "multi-region failover").
+        latest = restore_from if restore_from is not None else self.backup.rapid_retrieve()
         files_restored = 0
         files_quarantined = 0
         last_snapshot_at = started_at
@@ -192,7 +310,7 @@ class PhantomInstance:
             last_snapshot_at=last_snapshot_at,
             files_restored=files_restored,
             files_quarantined=files_quarantined,
-            evidence_path=str(evidence_path.relative_to(self.root)),
+            evidence_path=str((self.vault.root / custody_entry.case_id).relative_to(self.root)),
         )
         self.audit.append(
             "regeneration_complete",
@@ -208,12 +326,22 @@ class PhantomInstance:
     def status(self) -> dict:
         snapshots = self.backup.engine.list_snapshots()
         policy_state = self.policy.load()
+        custody_problems = self.vault.verify_chain()
         return {
             "instance": self.instance.info(),
             "snapshot_count": len(snapshots),
             "latest_snapshot": snapshots[-1].snapshot_id if snapshots else None,
             "providers": self.backup.provider_status(),
             "policy": policy_state.__dict__ if policy_state else None,
+            "forensic_vault": {
+                "case_count": len(self.vault.entries()),
+                "chain_intact": not custody_problems,
+                "problems": custody_problems,
+            },
+            "threat_intel": {
+                "known_bad_hashes": len(self.blocklist.load()),
+                "feed_indicators": len(self.feed.indicators()),
+            },
             "recent_audit_events": self.audit.tail(10),
         }
 
