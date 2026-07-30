@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 import sys
 from pathlib import Path
 
+from phantom.chaos import ChaosRunner
+from phantom.intel_export import verify_bundle
 from phantom.orchestrator import PhantomInstance
 from phantom.policy import DEFAULT_DAILY_INTERVAL_SECONDS
 
@@ -86,6 +89,44 @@ def build_parser() -> argparse.ArgumentParser:
     fleet_sub = p_fleet.add_subparsers(dest="fleet_command", required=True)
     fleet_sub.add_parser("show", help="show indicators currently published to the feed")
     fleet_sub.add_parser("pull", help="fold fleet indicators into this instance's local blocklist")
+
+    p_deception = sub.add_parser("deception", help="deception layer / honeypot (opt-in, default off)")
+    deception_sub = p_deception.add_subparsers(dest="deception_command", required=True)
+    deception_sub.add_parser("status", help="show whether deception is permitted, and why not")
+    p_dec_enable = deception_sub.add_parser(
+        "enable", help="record a customer opt-in with legal review (does not itself clear a jurisdiction)")
+    p_dec_enable.add_argument("--jurisdiction", required=True, help="operating jurisdiction for this deployment")
+    p_dec_enable.add_argument("--reviewed-by", required=True, help="who accepted the legal/risk review")
+    p_dec_enable.add_argument(
+        "--permit-jurisdiction", action="append", default=None, dest="permitted",
+        help="add a jurisdiction counsel has cleared (repeatable); empty allowlist = deception never runs",
+    )
+    deception_sub.add_parser("disable", help="turn the deception module back off")
+    deception_sub.add_parser("ttps", help="list TTP observations harvested from the sandbox")
+
+    p_intel = sub.add_parser("intel", help="threat-intel feed productization (export/revoke)")
+    intel_sub = p_intel.add_subparsers(dest="intel_command", required=True)
+    p_intel_export = intel_sub.add_parser("export", help="build a subscriber-facing bundle")
+    p_intel_export.add_argument("--tier", choices=["intel", "community"], default="intel")
+    p_intel_export.add_argument("--out", type=Path, default=None, help="write the bundle to this path")
+    p_intel_revoke = intel_sub.add_parser("revoke", help="withdraw an indicator from future exports")
+    p_intel_revoke.add_argument("content_hash")
+    p_intel_verify = intel_sub.add_parser("verify", help="subscriber-side integrity check of a bundle file")
+    p_intel_verify.add_argument("bundle", type=Path)
+
+    p_chaos = sub.add_parser("chaos", help="chaos/resilience testing")
+    chaos_sub = p_chaos.add_subparsers(dest="chaos_command", required=True)
+    p_chaos_run = chaos_sub.add_parser("run", help="run fault-injection scenarios and check recovery invariants")
+    p_chaos_run.add_argument("--seed", type=int, default=None, help="seed for randomized scenarios")
+    p_chaos_run.add_argument(
+        "--workdir", type=Path, default=None,
+        help="scratch directory for scenario instances (default: <root>/chaos_runs)",
+    )
+
+    p_compliance = sub.add_parser("compliance", help="control-evidence report (NOT a certification)")
+    compliance_sub = p_compliance.add_subparsers(dest="compliance_command", required=True)
+    p_comp_report = compliance_sub.add_parser("report", help="generate the control-evidence report")
+    p_comp_report.add_argument("--out", type=Path, default=None, help="also write the report as JSON here")
 
     p_providers = sub.add_parser("providers", help="inspect/simulate multi-region storage providers")
     providers_sub = p_providers.add_subparsers(dest="providers_command", required=True)
@@ -223,6 +264,94 @@ def main(argv=None) -> int:
         print("Session started; regenerated first (per-session cadence):")
         print(report.summary())
         return 0 if (report.rto_pass and report.rpo_pass) else 1
+
+    if args.command == "deception":
+        if args.deception_command == "status":
+            config = phantom.deception_policy.load()
+            decision = phantom.deception_policy.evaluate()
+            print(decision.summary())
+            print()
+            print(f"  enabled: {config.enabled}")
+            print(f"  jurisdiction: {config.jurisdiction or '(none declared)'}")
+            print(f"  legal review: {'acknowledged by ' + config.reviewed_by if config.legal_review_ack else 'NOT on record'}")
+            print(f"  permitted jurisdictions: {config.permitted_jurisdictions or '(empty -- nothing cleared)'}")
+            return 0
+        if args.deception_command == "enable":
+            _config, decision = phantom.enable_deception(
+                jurisdiction=args.jurisdiction, reviewed_by=args.reviewed_by,
+                permitted_jurisdictions=args.permitted,
+            )
+            print(f"Opt-in recorded for jurisdiction {args.jurisdiction!r}, reviewed by {args.reviewed_by!r}")
+            print()
+            print(decision.summary())
+            return 0
+        if args.deception_command == "disable":
+            phantom.deception_policy.disable()
+            print("Deception module disabled")
+            return 0
+        if args.deception_command == "ttps":
+            observations = phantom.honeypot.observations()
+            if not observations:
+                print("No TTP observations harvested")
+                return 0
+            for observation in observations:
+                print(f"{observation.content_hash[:16]}...  {observation.relpath}  "
+                      f"{observation.size_bytes}B  observed={observation.observed_at}")
+            return 0
+
+    if args.command == "intel":
+        if args.intel_command == "export":
+            if args.out is not None:
+                bundle = phantom.intel_exporter.export_to_file(args.out, tier=args.tier)
+                print(f"Wrote {bundle.indicator_count} indicator(s) to {args.out} (tier={bundle.tier})")
+                print(f"integrity_digest: {bundle.integrity_digest}")
+            else:
+                bundle = phantom.intel_exporter.export(tier=args.tier)
+                print(bundle.to_json())
+            return 0
+        if args.intel_command == "revoke":
+            phantom.revocations.revoke(args.content_hash)
+            print(f"Revoked {args.content_hash}; it will be excluded from future exports")
+            return 0
+        if args.intel_command == "verify":
+            problems = verify_bundle(args.bundle.read_text())
+            if not problems:
+                print("Bundle integrity OK (checksum only -- does not authenticate the issuer)")
+                return 0
+            print("BUNDLE PROBLEMS:")
+            for problem in problems:
+                print(f"  {problem}")
+            return 1
+
+    if args.command == "chaos" and args.chaos_command == "run":
+        workdir = args.workdir or (args.root / "chaos_runs")
+        counter = itertools.count()
+
+        def make_instance():
+            return PhantomInstance(workdir / f"run-{next(counter):03d}", instance_id=args.instance_id)
+
+        report = ChaosRunner(make_instance, seed=args.seed).run_all()
+        # Recorded so the compliance report can evidence "test recovery
+        # procedures" (A1.3) -- an untested recovery claim is just a claim.
+        phantom.audit.append(
+            "chaos_suite_run",
+            scenarios=len(report.results),
+            passed=sum(1 for r in report.results if r.passed),
+            all_passed=report.passed,
+            seed=args.seed,
+        )
+        print(report.summary())
+        return 0 if report.passed else 1
+
+    if args.command == "compliance" and args.compliance_command == "report":
+        report = phantom.compliance.generate()
+        print(report.summary())
+        if args.out is not None:
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(report.to_json())
+            print()
+            print(f"Wrote JSON report to {args.out}")
+        return 0
 
     if args.command == "providers":
         if args.providers_command == "status":

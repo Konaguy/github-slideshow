@@ -31,6 +31,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from phantom.sanitize import DEFAULT_RULES, shannon_entropy
+from phantom.snapshot import INTERVAL, POST_REGENERATION
 
 # Score contributions per signal, weighted by how much each one means on
 # its own. entropy_spike (text became random), mass_deletion (wiper
@@ -97,6 +98,15 @@ class DetectionEngine:
     def evaluate(self, previous, current) -> DetectionResult:
         """previous/current are Snapshot objects; previous may be None (first snapshot)."""
         if previous is None:
+            return DetectionResult(score=0.0, threshold=self.threshold, signals=[])
+
+        # A post-regeneration snapshot is Phantom's own recovery: every file
+        # legitimately changed at once because we just rebuilt from a clean
+        # baseline. Scoring that delta would have the product flag its own
+        # remediation as an attack -- and since the response to an anomaly is
+        # another regeneration, that is a rebuild loop waiting for someone to
+        # nudge a weight upward.
+        if getattr(current, "kind", INTERVAL) == POST_REGENERATION:
             return DetectionResult(score=0.0, threshold=self.threshold, signals=[])
 
         prior_paths = set(previous.files)

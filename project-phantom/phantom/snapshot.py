@@ -27,12 +27,22 @@ from typing import Optional
 from phantom.storage import MultiRegionStore
 
 
+INTERVAL = "interval"
+POST_REGENERATION = "post_regeneration"
+
+
 @dataclass
 class Snapshot:
     snapshot_id: str
     taken_at: str
     parent_id: Optional[str]
     files: dict  # relpath -> content hash
+    # "interval" = an ordinary periodic capture. "post_regeneration" = the
+    # clean state right after a rebuild. The distinction matters to the
+    # detection engine: the delta across a rebuild is Phantom's own
+    # recovery, not attacker activity, and scoring it as drift would have
+    # the product treating its own remediation as an incident.
+    kind: str = INTERVAL
 
 
 class SnapshotEngine:
@@ -49,7 +59,7 @@ class SnapshotEngine:
         self.snapshots_dir.mkdir(parents=True, exist_ok=True)
         self.store = store
 
-    def take_snapshot(self, data_dir: Path) -> Snapshot:
+    def take_snapshot(self, data_dir: Path, kind: str = INTERVAL) -> Snapshot:
         existing = self.list_snapshots()
         parent = existing[-1] if existing else None
         files = {}
@@ -71,6 +81,7 @@ class SnapshotEngine:
             taken_at=_now(),
             parent_id=parent.snapshot_id if parent else None,
             files=files,
+            kind=kind,
         )
         self._write_manifest(snapshot)
         return snapshot
@@ -82,6 +93,7 @@ class SnapshotEngine:
             "taken_at": snapshot.taken_at,
             "parent_id": snapshot.parent_id,
             "files": snapshot.files,
+            "kind": snapshot.kind,
         }, indent=2))
 
     def list_snapshots(self) -> list:

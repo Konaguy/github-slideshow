@@ -20,8 +20,11 @@ class FakeBlobStore:
         return self.blobs[digest]
 
 
-def _snapshot(snapshot_id, files, parent_id=None):
-    return Snapshot(snapshot_id=snapshot_id, taken_at="2026-07-30T12:00:00Z", parent_id=parent_id, files=files)
+def _snapshot(snapshot_id, files, parent_id=None, kind="interval"):
+    return Snapshot(
+        snapshot_id=snapshot_id, taken_at="2026-07-30T12:00:00Z",
+        parent_id=parent_id, files=files, kind=kind,
+    )
 
 
 def test_first_snapshot_is_never_anomalous():
@@ -154,6 +157,50 @@ def test_score_is_capped_at_one():
 
     assert result.score == 1.0
     assert result.is_anomalous
+
+
+def test_post_regeneration_snapshot_is_never_scored_as_drift():
+    """Phantom's own rebuild changes every file at once. Scoring that as an
+    anomaly makes the response to an attack look like another attack --
+    a rebuild loop.
+    """
+    store = FakeBlobStore()
+    engine = DetectionEngine(read_blob=store.read)
+    names = [f"f{i}.txt" for i in range(8)]
+    # Prior snapshot is the compromised state: everything encrypted.
+    previous = _snapshot("s1", {n: store.add(os.urandom(2048)) for n in names})
+    # Recovery restores clean plaintext -- a 100% rewrite, by design.
+    recovered = _snapshot(
+        "s2",
+        {n: store.add(("recovered plain text " * 20 + n).encode()) for n in names},
+        kind="post_regeneration",
+    )
+
+    result = engine.evaluate(previous, recovered)
+
+    assert result.score == 0.0
+    assert result.signals == []
+    assert not result.is_anomalous
+
+
+def test_interval_snapshot_after_recovery_is_scored_normally():
+    """Suppression applies only to the recovery snapshot itself, not to
+    everything that follows it -- an attack right after a rebuild must
+    still be caught.
+    """
+    store = FakeBlobStore()
+    engine = DetectionEngine(read_blob=store.read)
+    names = [f"f{i}.txt" for i in range(8)]
+    recovered = _snapshot(
+        "s2",
+        {n: store.add(("recovered plain text " * 20 + n).encode()) for n in names},
+        kind="post_regeneration",
+    )
+    reattacked = _snapshot("s3", {n: store.add(os.urandom(2048)) for n in names})
+
+    result = engine.evaluate(recovered, reattacked)
+
+    assert result.is_anomalous, result.summary()
 
 
 def test_unreadable_blob_does_not_crash_or_false_fire():
