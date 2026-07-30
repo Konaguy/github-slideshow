@@ -378,6 +378,87 @@ Regeneration complete: reason=manual trigger: ransomware indicators
 network — the numbers above demonstrate the *mechanism*, not production
 latency. The <5 min / <1 min targets are the ones from charter §4.)
 
+## Scale benchmark — and what it found
+
+Charter §9 lists **"Snapshot overhead at scale"** as a High-impact risk
+mitigated by "incremental snapshots, tiered intervals, **early
+benchmarks**." `phantom/benchmark.py` is that benchmark.
+
+```bash
+python3 -m phantom benchmark run --scale small     # seconds
+python3 -m phantom benchmark run --scale medium    # ~4 min, writes ~7GiB
+```
+
+It exits non-zero when a §4 target is missed, so it can gate CI later.
+
+### Finding 1 — file-level snapshots cannot meet the §4 overhead target
+
+§5.A specifies **block-level** thin deltas. This prototype snapshots at
+*file* granularity, and the benchmark quantifies what that costs. Measured
+at `--scale medium` (100 files × 16MiB = 1.6GiB, ten 4KiB edits per round):
+
+| Metric | Measured | §4 target |
+|---|---|---|
+| write amplification | **12,288x** | — |
+| CPU duty cycle @30s interval | **30.2%** | < 5% |
+| bandwidth | **134.2%** of a 100 Mbps uplink | < 5% |
+| RTO | 19.4s | < 5 min ✅ |
+
+40KiB of real user change produces **480MiB of writes per snapshot**. The
+12,288x decomposes cleanly: 4096x because a 4KiB edit rewrites its whole
+16MiB file, times 3x for replication to three providers. At 134% of the
+uplink the pipeline cannot ship one snapshot per interval — it falls
+permanently behind.
+
+Even the benign workload (20,000 × 8KiB, full-file rewrites, no
+granularity penalty) lands at 6.5% CPU and 6.6% bandwidth — still over.
+
+**So block-level granularity is a prerequisite, not an optimization.**
+Content-defined chunking (or any sub-file delta scheme) is what makes §4
+reachable; no amount of faster storage substitutes, because the bytes are
+being generated before they ever reach storage.
+
+Two honest caveats on the numbers: the 3x replication factor is a
+deliberate design choice, not a defect, and it sets a hard floor on
+bandwidth — a real deployment may replicate to fewer regions
+synchronously. And RTO passes comfortably here only because restore reads
+from local disk; 1.6GiB over a 100 Mbps link is ~2.2 min, still inside the
+5-minute target but with far less headroom than 19s suggests.
+
+### Finding 2 — an O(n) defect in the snapshot chain (found, fixed)
+
+`take_snapshot` called `list_snapshots()`, parsing **every** manifest in
+the chain to get two things: the chain length and the parent's id. Cost
+therefore scaled with history — and the chain grows by one every 30–60s,
+forever.
+
+| Chain length | `take_snapshot` before | after |
+|---|---|---|
+| 1 | 74.6ms | 69.2ms |
+| 100 | 134.8ms | 69.9ms |
+| 200 | 196.3ms | 71.5ms |
+
+By snapshot 200 — under two hours of operation — manifest re-parsing was
+~60% of snapshot cost and still climbing. A day is ~2,880 snapshots. Both
+values are available from manifest *filenames*, so the fix parses nothing;
+cost is now flat. `tests/test_benchmark.py` guards it structurally (by
+asserting no manifest is parsed) rather than by timing, so it can't go
+flaky in CI.
+
+A five-round benchmark showed this as "1.02x, flat" and missed it
+entirely — the defect only appears when chain length is varied
+independently of data size, which is what `measure_chain_scaling` does.
+
+### What the numbers do and don't transfer
+
+Storage is local disk, so **absolute latency does not transfer** — real
+object storage adds a network round-trip per blob and would be slower.
+What transfers is everything that's a property of the algorithm rather
+than the medium: write amplification, CPU per snapshot, and cost growth
+with chain length. Read wall-clock figures as a floor, not a forecast.
+The 100 Mbps uplink in `NOMINAL_UPLINK_MBPS` is a stated assumption, not a
+measurement — the charter doesn't specify one.
+
 ## Run the tests
 
 ```bash
@@ -403,6 +484,7 @@ project-phantom/
     intel_export.py                     # subscriber bundles: TTL, revocation, tiers
     chaos.py                              # fault injection + recovery invariants
     compliance.py                           # control-evidence report (NOT certification)
+    benchmark.py                              # scale benchmark for snapshot/restore (§9 top risk)
     instance.py                               # disposable-instance driver (local workspace)
     metrics.py                                  # RTO/RPO timing + audit log
     orchestrator.py                               # ties it together: PhantomInstance facade
@@ -412,4 +494,5 @@ project-phantom/
     test_storage.py      test_forensics.py    test_intel_export.py
     test_sanitize.py     test_fleet.py        test_chaos.py
     test_policy.py       test_e2e.py          test_compliance.py
+                                              test_benchmark.py
 ```

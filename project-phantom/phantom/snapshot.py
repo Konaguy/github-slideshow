@@ -60,8 +60,15 @@ class SnapshotEngine:
         self.store = store
 
     def take_snapshot(self, data_dir: Path, kind: str = INTERVAL) -> Snapshot:
-        existing = self.list_snapshots()
-        parent = existing[-1] if existing else None
+        # Only the chain length and the parent's *id* are needed here, and
+        # both come from the manifest filenames -- so this deliberately
+        # does not call list_snapshots(), which parses every manifest in
+        # the chain. That parse is O(chain_length x file_count) and, since
+        # a snapshot is taken every 30-60s, it came to dominate snapshot
+        # cost within hours of operation (measured in phantom/benchmark.py:
+        # 0.9ms at chain length 1, 116ms at 200, still climbing).
+        existing_paths = self._manifest_paths()
+        parent_id = existing_paths[-1].stem if existing_paths else None
         files = {}
         for path in sorted(p for p in data_dir.rglob("*") if p.is_file()):
             relpath = str(path.relative_to(data_dir))
@@ -75,11 +82,11 @@ class SnapshotEngine:
         # snapshots at 30-60s intervals can easily land in the same second,
         # and a colliding id would silently overwrite the previous manifest.
         # Zero-padded so lexical sort matches chronological order.
-        snapshot_id = time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime()) + f"-{len(existing):06d}"
+        snapshot_id = time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime()) + f"-{len(existing_paths):06d}"
         snapshot = Snapshot(
             snapshot_id=snapshot_id,
             taken_at=_now(),
-            parent_id=parent.snapshot_id if parent else None,
+            parent_id=parent_id,
             files=files,
             kind=kind,
         )
@@ -96,16 +103,23 @@ class SnapshotEngine:
             "kind": snapshot.kind,
         }, indent=2))
 
+    def _manifest_paths(self) -> list:
+        """Manifest files, oldest first. The zero-padded sequence in each
+        snapshot id makes lexical order chronological. Filenames only --
+        no parsing, so this stays cheap as the chain grows."""
+        return sorted(self.snapshots_dir.glob("*.json"))
+
+    def _read_manifest(self, path: Path) -> Snapshot:
+        return Snapshot(**json.loads(path.read_text()))
+
     def list_snapshots(self) -> list:
-        result = []
-        for path in sorted(self.snapshots_dir.glob("*.json")):
-            data = json.loads(path.read_text())
-            result.append(Snapshot(**data))
-        return result
+        """Every snapshot, fully parsed. Callers that only need the newest
+        one should use latest_snapshot() -- this parses the whole chain."""
+        return [self._read_manifest(path) for path in self._manifest_paths()]
 
     def latest_snapshot(self) -> Optional[Snapshot]:
-        snapshots = self.list_snapshots()
-        return snapshots[-1] if snapshots else None
+        paths = self._manifest_paths()
+        return self._read_manifest(paths[-1]) if paths else None
 
     def read_blob(self, digest: str) -> bytes:
         content, _provider_name = self.store.get(digest)
