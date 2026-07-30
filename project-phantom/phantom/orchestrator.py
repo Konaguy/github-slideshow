@@ -1,6 +1,7 @@
 """Ties baseline + snapshot + backup + sanitize + policy + detection +
-forensics + fleet intel + instance into the observe -> decide -> preserve ->
-destroy -> regenerate -> restore -> harden loop described in charter §1.1.
+forensics + fleet intel + deception + instance into the observe -> decide ->
+preserve -> destroy -> regenerate -> restore -> harden loop described in
+charter §1.1.
 
 `PhantomInstance` is the single facade the CLI talks to.
 """
@@ -15,13 +16,17 @@ from typing import Optional
 
 from phantom import baseline as baseline_mod
 from phantom.backup_store import BackupStore
+from phantom.compliance import ComplianceReporter
+from phantom.deception import DeceptionPolicy, Honeypot
 from phantom.detection import DetectionEngine
 from phantom.fleet import ThreatIntelFeed
 from phantom.forensics import ForensicVault
 from phantom.instance import LocalWorkspaceInstance
+from phantom.intel_export import IntelExporter, RevocationList
 from phantom.metrics import AuditLog, RegenerationReport
 from phantom.policy import RegenerationPolicy
 from phantom.sanitize import Blocklist, QuarantineStore, scan
+from phantom.snapshot import POST_REGENERATION
 from phantom.storage import ProviderUnavailable
 
 DEFAULT_BASELINE_FILES = {
@@ -46,6 +51,12 @@ class PhantomInstance:
         # A feed outside this instance's root is the fleet-wide one; the
         # default keeps a single instance self-contained for the basic demo.
         self.feed = ThreatIntelFeed(feed_path if feed_path is not None else root / "threat_intel.jsonl")
+        # Phase 4
+        self.deception_policy = DeceptionPolicy(root / "deception.json")
+        self.honeypot = Honeypot(root / "honeypot")
+        self.revocations = RevocationList(root / "intel_revocations.json")
+        self.intel_exporter = IntelExporter(self.feed, self.revocations)
+        self.compliance = ComplianceReporter(self.audit, self.vault, self.policy)
 
     # -- provisioning ------------------------------------------------
 
@@ -193,9 +204,58 @@ class PhantomInstance:
         report = self.regenerate(
             reason=f"detection: behavioral drift score {result.score:.2f}",
             restore_from=recovery_point,
+            deception_eligible=True,
         )
         self._publish_indicators(share=share_intel)
         return result, report
+
+    # -- deception layer (charter §5.G, Phase 4) --------------------------
+
+    def _maybe_migrate_to_honeypot(self, case_id: str):
+        """Migrate to a quarantined honeypot iff the gate permits it.
+
+        Returns the TTP observations harvested, or None when denied. A
+        denial is logged and is not an error: default-deny is the designed
+        behavior, not a failure of it.
+        """
+        decision = self.deception_policy.evaluate()
+        if not decision.permitted:
+            self.audit.append("deception_declined", case_id=case_id, reasons=decision.reasons)
+            return None
+
+        session_dir = self.honeypot.migrate(self.instance.data_dir, case_id)
+        observations = self.honeypot.harvest(session_dir)
+        self.audit.append(
+            "deception_migrated",
+            case_id=case_id,
+            artifacts_harvested=len(observations),
+        )
+        return observations
+
+    def enable_deception(self, jurisdiction: str, reviewed_by: str, permitted_jurisdictions=None):
+        config = self.deception_policy.enable(
+            jurisdiction=jurisdiction, reviewed_by=reviewed_by,
+            permitted_jurisdictions=permitted_jurisdictions,
+        )
+        decision = self.deception_policy.evaluate()
+        self.audit.append(
+            "deception_opt_in_recorded",
+            jurisdiction=jurisdiction, reviewed_by=reviewed_by, effective=decision.permitted,
+        )
+        return config, decision
+
+    def publish_harvested_ttps(self, share: bool = True) -> list:
+        """Feed honeypot-harvested indicators into the fleet feed (§5.G -> §5.H)."""
+        hashes = self.honeypot.harvested_hashes()
+        if not hashes:
+            return []
+        fingerprint = hashlib.sha256(str(self.root).encode()).hexdigest()[:12]
+        published = self.feed.publish(
+            hashes, label="phantom.honeypot-ttp", source_fingerprint=fingerprint, share=share,
+        )
+        if published:
+            self.audit.append("honeypot_intel_published", indicator_count=len(published))
+        return published
 
     # -- fleet immunity (charter §5.H) ------------------------------------
 
@@ -232,10 +292,16 @@ class PhantomInstance:
     # -- regeneration ---------------------------------------------------
 
     def regenerate(self, reason: str, instance_id: Optional[str] = None,
-                   restore_from=None) -> RegenerationReport:
+                   restore_from=None, deception_eligible: bool = False) -> RegenerationReport:
         """`restore_from` overrides the default "latest snapshot" recovery
         point -- used when detection determines the latest snapshot itself
         captured the attack (see `detect_and_respond`).
+
+        `deception_eligible` marks this as an attack-triggered rebuild, the
+        only kind that may migrate to a honeypot (§5.G). Scheduled/ephemeral
+        rebuilds pass False: there is no attacker session to preserve, and
+        cloning a user's ordinary desktop into a sandbox every night would
+        be surveillance, not deception.
         """
         instance_id = instance_id or self.instance_id
         started_at = time.time()
@@ -250,6 +316,13 @@ class PhantomInstance:
             content_digest=custody_entry.content_digest,
             entry_hash=custody_entry.entry_hash,
         )
+
+        # 1b. Optionally migrate the compromised workload into a quarantined
+        #     honeypot (§5.G) so the attacker keeps working against a decoy.
+        #     Default-denied unless the customer opted in and counsel cleared
+        #     the jurisdiction -- see phantom/deception.py.
+        if deception_eligible:
+            self._maybe_migrate_to_honeypot(custody_entry.case_id)
 
         # 2. Verify the baseline is still trustworthy, then destroy + respawn.
         baseline_mod.verify_baseline(self.baseline_dir)
@@ -302,6 +375,12 @@ class PhantomInstance:
                 quarantine_path=quarantine_batch_path,
             )
 
+        # 4. Capture the recovered state so the snapshot chain reflects the
+        #    rebuild. Without this the next interval snapshot is diffed
+        #    against pre-rebuild state, which both misreports drift and
+        #    leaves the recovery point stale.
+        self.backup.engine.take_snapshot(self.instance.data_dir, kind=POST_REGENERATION)
+
         finished_at = time.time()
         report = RegenerationReport(
             reason=reason,
@@ -341,6 +420,12 @@ class PhantomInstance:
             "threat_intel": {
                 "known_bad_hashes": len(self.blocklist.load()),
                 "feed_indicators": len(self.feed.indicators()),
+                "revoked_indicators": len(self.revocations.load()),
+            },
+            "deception": {
+                "permitted": self.deception_policy.evaluate().permitted,
+                "quarantined_sandbox": self.honeypot.is_quarantined(),
+                "ttp_observations": len(self.honeypot.observations()),
             },
             "recent_audit_events": self.audit.tail(10),
         }

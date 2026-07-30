@@ -1,7 +1,7 @@
-# Project Phantom — MVP Prototype (Phases 1–3)
+# Project Phantom — MVP Prototype (Phases 1–4)
 
-Working code for the **Phase 1**, **Phase 2**, and (part of) **Phase 3**
-milestones of the Project Phantom charter (v0.2, 2026-07-29):
+Working code for the **Phase 1**, **Phase 2**, and (parts of) **Phase 3**
+and **Phase 4** milestones of the Project Phantom charter (v0.2, 2026-07-29):
 
 > **Phase 1: MVP.** Single-VM proof: thin snapshots, cloud backup, manual
 > trigger, demonstrated <5 min recovery. Patch/QA pipeline stood up in
@@ -17,17 +17,26 @@ milestones of the Project Phantom charter (v0.2, 2026-07-29):
 > forensic vault, fleet immunity propagation. *(Also serverless +
 > multi-hypervisor support and cross-cloud regeneration orchestration —
 > see the scope note below.)*
+>
+> **Phase 4: Deception & GA Hardening.** Honeypot migration module,
+> threat-intel feed productization, chaos/resilience testing, customer
+> pilots, compliance certification.
 
 This is a runnable proof of the core regeneration loop, not a production
 platform.
 
-**Phase 3 is partially covered.** The three detection/intelligence
-deliverables (§5.D, §5.F, §5.H) are implemented and tested. The
-infrastructure half of Phase 3 — serverless and multi-hypervisor support,
-cross-cloud regeneration orchestration against real AWS/Azure/GCP targets —
-is *not*, because it needs real hypervisors and cloud credentials rather
-than more code. Phase 4 (deception layer, threat-intel productization,
-compliance certification) is untouched.
+**Phases 3 and 4 are partially covered.** Everything that is code is built
+and tested; what's missing needs infrastructure, customers, or an auditor
+rather than more code:
+
+| Deliverable | Status |
+|---|---|
+| §5.D detection · §5.F forensic vault · §5.H fleet immunity | built |
+| §5.G deception / honeypot migration | built — default-denied, see below |
+| Threat-intel productization · chaos/resilience testing | built |
+| Serverless · multi-hypervisor · cross-cloud orchestration | **not built** — needs real hypervisors and cloud credentials |
+| Customer pilots | **not built** — needs customers |
+| Compliance *certification* | **not built** — that's an audit, not a program. Evidence *reporting* is built |
 
 ## What's implemented (maps to charter §5)
 
@@ -40,7 +49,9 @@ compliance certification) is untouched.
 | E. Data Sanitization Layer | `phantom/sanitize.py` — a multi-signal restore-time scanning pipeline (see below). This is the Phase 2 gate the risk register calls "not optional." |
 | F. Forensic Vault | `phantom/forensics.py` — hash-chained, append-only evidence vault with chain-of-custody metadata. Each entry commits to the one before it, so tampering with stored artifacts *or* the ledger is detectable via `phantom vault verify`. |
 | H. Fleet Immunity & Threat-Intel Feed | `phantom/fleet.py` — a shared indicator feed. When one instance detects an attack it publishes content hashes (anonymized: hash + coarse label only, never contents or paths, opt-in per §9); other instances pull them and harden pre-emptively. |
+| G. Deception Layer (optional) | `phantom/deception.py` — migrates a compromised workload into a quarantined honeypot so the attacker keeps working against a decoy while the real instance regenerates, harvesting TTPs as hashes/metadata. **Default-denied**: requires customer opt-in, a recorded legal review, *and* a jurisdiction counsel has cleared. |
 | I. Vulnerability Scanning & Patch QA (parallel track) | `.github/workflows/phantom-patch-qa.yml` — CI pipeline that runs the regression test suite on every push, standing in for the QA-bot regression gate. |
+| J. Enterprise Integration (compliance slice) | `phantom/compliance.py` — control-evidence report built from the audit log, vault, and policy state. Reports gaps as loudly as coverage. Explicitly **not** a certification. |
 | K. Multi-Cloud Control Plane (initial, storage only) | `phantom/storage.py` — a `StorageProvider` interface with named providers standing in for AWS/Azure/private-cloud, fan-out replication on write, and failover on read. Phase 2 scope is explicitly "initial... abstraction," not the full control plane. |
 
 **Single VM, not a fleet.** The "instance" is a workspace directory
@@ -70,6 +81,31 @@ a bulk rewrite with no entropy change (a formatter, a sync) stays below
 the trigger, and percentage-based signals are suppressed entirely below
 5 files, since "50% of your 2 files changed" is noise.
 
+**The deception layer is off, and it is meant to stay off until someone
+decides otherwise.** The charter marks it "(optional)," makes it opt-in
+per customer with legal review required (§8), and flags legal exposure as
+a live risk (§9). So `DeceptionPolicy` is default-deny and needs three
+independent conditions: the module enabled, a recorded legal-review
+acknowledgement naming who signed off, and the operating jurisdiction
+present in an allowlist. **That allowlist ships empty and this code has no
+built-in opinion about which jurisdictions permit deception, retaining an
+intruder's session, or harvesting their tooling** — those turn on local
+law, customer contracts, and the deployment, and a guess encoded here
+would be invented legal advice someone might rely on. Counsel fills it in.
+Only attack-triggered rebuilds are eligible; scheduled/ephemeral rebuilds
+never migrate, because cloning an ordinary desktop nightly is surveillance
+rather than deception. Scope is containment and observation of a workload
+the customer already owns — it never reaches back toward whoever is on the
+other end, and it should not grow in that direction.
+
+**The compliance report is audit input, not compliance.** Running it
+doesn't make a deployment compliant; certification is an audit performed
+by a licensed firm over a defined observation period. The control mapping
+is a starting point for a conversation with an auditor, not a validated
+mapping, and the report lists what's missing (including that Phantom's own
+audit log isn't tamper-evident, unlike the forensic vault) as prominently
+as what's present.
+
 **The forensic vault is an integrity ledger, not a legal chain of custody.**
 Hash-chaining makes tampering *detectable*, which is the property Phases
 1–2 lacked. Genuinely defensible evidence additionally needs WORM storage
@@ -98,10 +134,16 @@ a persisted quarantine store) that a real engine plugs into.
   credentials, not more code.
 - The full multi-cloud control plane (identity, network restoration, audit
   logging normalized across providers) — §5.K; only the storage slice ships here.
-- Deception layer / honeypot migration (§5.G), threat-intel feed
-  productization, chaos testing, compliance certification — Phase 4.
+- Customer pilots (§6 Phase 4) and compliance *certification* — neither is
+  a programming task.
+- Real network isolation for the honeypot sandbox, a believable synthetic
+  decoy environment, and the §10 open question of building deception
+  in-house versus partnering with a honeypot vendor.
+- Real cryptographic signing of intel bundles (the current integrity digest
+  is a checksum, not a provenance claim), plus authenticated distribution,
+  subscriber identity, and billing.
 - Enterprise integrations: SIEM/EDR hooks, Kubernetes/vSphere APIs,
-  dashboards, SOC 2 evidence (§5.J).
+  dashboards (§5.J).
 
 ## Quick start
 
@@ -233,6 +275,95 @@ VM B never having seen it before. Sharing is opt-in
 (`detect-and-respond --no-share-intel`) per the §9 privacy mitigation;
 opting out of *contributing* never disables *protection*.
 
+### Deception layer (Phase 4, §5.G) — opt-in, default off
+
+```bash
+python3 -m phantom deception status
+```
+
+```
+Deception DENIED:
+  - deception module is not enabled for this customer (opt-in required, §8)
+  - no legal/risk review acknowledgement on record (§8, §9)
+  - no operating jurisdiction declared
+```
+
+Opting in is deliberately *not* sufficient — counsel must clear the
+jurisdiction as a separate act:
+
+```bash
+python3 -m phantom deception enable --jurisdiction EXAMPLE-1 --reviewed-by counsel@example.com
+# -> still DENIED: jurisdiction 'EXAMPLE-1' is not in the allowlist (empty)
+
+python3 -m phantom deception enable --jurisdiction EXAMPLE-1 \
+    --reviewed-by counsel@example.com --permit-jurisdiction EXAMPLE-1
+# -> Deception permitted
+```
+
+With it permitted, an attack-triggered rebuild clones the compromised
+workload into the sandbox and harvests TTPs, while the real instance
+recovers clean:
+
+```bash
+python3 -m phantom detect-and-respond
+python3 -m phantom deception ttps
+```
+
+```
+9884ecae60f4b3a2...  RANSOM_NOTE_README.txt  47B  observed=2026-07-30T16:02:31Z
+19179b447359df6d...  invoice.pdf.exe  21B  observed=2026-07-30T16:02:31Z
+```
+
+Harvested hashes can be pushed to the fleet feed via
+`publish_harvested_ttps()`, closing §5.G into §5.H.
+
+### Threat-intel productization (Phase 4)
+
+```bash
+python3 -m phantom intel export --tier intel --out bundle.json
+python3 -m phantom intel verify bundle.json
+python3 -m phantom intel revoke <content-hash>   # excluded from future exports
+```
+
+Bundles are versioned, TTL-filtered, revocation-filtered, and tiered
+(`intel` gets full history, `community` a 7-day window). `verify` detects
+corruption or modification in transit — but see the caveat above: the
+digest is a checksum, **not** proof of who issued the bundle.
+
+### Chaos / resilience testing (Phase 4)
+
+```bash
+python3 -m phantom chaos run --seed 7
+```
+
+```
+[PASS] provider_outage: regenerated with provider 'aws-us-east-1' unavailable
+[PASS] majority_provider_outage: regenerated with only 1 of 3 providers reachable
+[PASS] attack_then_outage: regenerated from a compromised snapshot with a region down
+[PASS] baseline_drift: regeneration correctly refused to spawn from a drifted baseline
+[PASS] vault_tampering_detected: custody chain flagged post-capture evidence tampering
+[PASS] random_multi_outage: regenerated with ['aws-us-east-1', 'azure-westus'] unavailable
+
+6/6 scenarios passed
+```
+
+Each scenario injects a fault, runs a real regeneration, and asserts the
+invariants that must survive it: recovery completes, RTO/RPO stay inside
+the §4 targets, clean data returns, nothing quarantined gets restored, and
+the custody chain still verifies. Note `baseline_drift` passes by
+*refusing* to regenerate — spawning from a tampered baseline would be the
+failure.
+
+### Compliance evidence (Phase 4, §5.J)
+
+```bash
+python3 -m phantom compliance report --out compliance.json
+```
+
+Reports which controls have evidence in the audit log and which don't, and
+lists the gaps an auditor will raise — including that Phantom's own audit
+log has no hash chain. It is **not** a certification; see the caveat above.
+
 `regen` prints a report like:
 
 ```
@@ -268,17 +399,17 @@ project-phantom/
     detection.py                # inter-snapshot behavioral drift scoring (§5.D)
     forensics.py                  # hash-chained evidence vault + chain of custody (§5.F)
     fleet.py                        # shared threat-intel feed / herd immunity (§5.H)
-    instance.py                       # disposable-instance driver (local workspace)
-    metrics.py                          # RTO/RPO timing + audit log
-    orchestrator.py                       # ties it together: PhantomInstance facade
-    cli.py                                  # `python3 -m phantom ...`
+    deception.py                      # default-deny gate + quarantined honeypot (§5.G)
+    intel_export.py                     # subscriber bundles: TTL, revocation, tiers
+    chaos.py                              # fault injection + recovery invariants
+    compliance.py                           # control-evidence report (NOT certification)
+    instance.py                               # disposable-instance driver (local workspace)
+    metrics.py                                  # RTO/RPO timing + audit log
+    orchestrator.py                               # ties it together: PhantomInstance facade
+    cli.py                                          # `python3 -m phantom ...`
   tests/
-    test_snapshot.py
-    test_storage.py
-    test_sanitize.py
-    test_policy.py
-    test_detection.py
-    test_forensics.py
-    test_fleet.py
-    test_e2e.py
+    test_snapshot.py     test_detection.py    test_deception.py
+    test_storage.py      test_forensics.py    test_intel_export.py
+    test_sanitize.py     test_fleet.py        test_chaos.py
+    test_policy.py       test_e2e.py          test_compliance.py
 ```

@@ -43,7 +43,9 @@ def test_full_regeneration_loop(tmp_path):
     assert (phantom.instance.root / "etc" / "security-policy.conf").exists()
 
     status = phantom.status()
-    assert status["snapshot_count"] == 3
+    # 3 interval snapshots + the post-regeneration capture of the clean state.
+    assert status["snapshot_count"] == 4
+    assert phantom.backup.engine.list_snapshots()[-1].kind == "post_regeneration"
     assert any(e["event"] == "regeneration_complete" for e in status["recent_audit_events"])
 
 
@@ -193,6 +195,149 @@ def test_intel_opt_out_publishes_nothing_but_still_regenerates(tmp_path):
     assert result.is_anomalous
     assert report is not None, "opting out of sharing must not disable protection"
     assert phantom.feed.hashes() == set(), "nothing should have been published"
+
+
+def test_recovery_does_not_look_like_a_new_attack(tmp_path):
+    """Regression: regeneration rewrites every file, so the delta spanning
+    a rebuild reads like an attack. If that scores as drift, responding to
+    an attack triggers another response -- a rebuild loop.
+    """
+    phantom = PhantomInstance(tmp_path / "phantom_state")
+    phantom.init()
+    for i in range(6):  # above the mass-signal file-count floor
+        phantom.write_user_file(f"doc{i}.txt", f"ordinary business content number {i} " * 5)
+    phantom.take_snapshot()
+
+    phantom.simulate_encryption_attack()
+    phantom.take_snapshot()
+    result, report = phantom.detect_and_respond()
+    assert result.is_anomalous and report is not None
+
+    # The rebuild's own snapshot must not score as drift...
+    assert not phantom.detect().is_anomalous, phantom.detect().summary()
+
+    # ...and neither should the next ordinary interval snapshot of the
+    # recovered instance, which is now diffed against the clean rebuild.
+    phantom.take_snapshot()
+    follow_up = phantom.detect()
+    assert not follow_up.is_anomalous, follow_up.summary()
+
+    # A genuine re-attack after recovery is still caught.
+    phantom.simulate_encryption_attack()
+    phantom.take_snapshot()
+    assert phantom.detect().is_anomalous
+
+
+def test_deception_does_not_run_without_opt_in(tmp_path):
+    """Default-deny end to end: an attack response must NOT clone the
+    workload into a sandbox unless the customer opted in (§8, §9).
+    """
+    phantom = PhantomInstance(tmp_path / "phantom_state")
+    phantom.init()
+    phantom.write_user_file("notes.txt", "hello")
+    phantom.take_snapshot()
+
+    phantom.simulate_attack()
+    phantom.take_snapshot()
+    result, report = phantom.detect_and_respond()
+
+    assert result.is_anomalous
+    assert report is not None
+    assert not phantom.honeypot.is_quarantined(), "sandbox created without opt-in"
+    assert phantom.honeypot.observations() == []
+    assert any(e["event"] == "deception_declined" for e in phantom.audit.tail(50))
+
+
+def test_deception_migrates_and_harvests_when_permitted(tmp_path):
+    phantom = PhantomInstance(tmp_path / "phantom_state")
+    phantom.init()
+    phantom.enable_deception(
+        jurisdiction="EXAMPLE-1",
+        reviewed_by="counsel@example.com",
+        permitted_jurisdictions=["EXAMPLE-1"],
+    )
+    phantom.write_user_file("notes.txt", "hello")
+    phantom.take_snapshot()
+
+    phantom.simulate_attack()
+    phantom.take_snapshot()
+    result, report = phantom.detect_and_respond()
+
+    assert result.is_anomalous
+    assert report is not None
+    assert phantom.honeypot.is_quarantined()
+
+    # The attacker's dropped payload is in the sandbox and harvested as TTPs.
+    harvested = {o.relpath for o in phantom.honeypot.observations()}
+    assert "RANSOM_NOTE_README.txt" in harvested
+
+    # The real instance still recovered clean.
+    assert (phantom.instance.data_dir / "notes.txt").read_text() == "hello"
+    assert not (phantom.instance.data_dir / "RANSOM_NOTE_README.txt").exists()
+
+
+def test_scheduled_regeneration_never_migrates_to_a_honeypot(tmp_path):
+    """Cloning an ordinary desktop nightly would be surveillance, not
+    deception -- only attack-triggered rebuilds are eligible.
+    """
+    phantom = PhantomInstance(tmp_path / "phantom_state")
+    phantom.init()
+    phantom.enable_deception(
+        jurisdiction="EXAMPLE-1", reviewed_by="counsel@example.com",
+        permitted_jurisdictions=["EXAMPLE-1"],
+    )
+    phantom.write_user_file("notes.txt", "ordinary work")
+    phantom.take_snapshot()
+    phantom.set_policy("per_session")
+
+    phantom.session_start()
+
+    assert not phantom.honeypot.is_quarantined()
+    assert phantom.honeypot.observations() == []
+
+
+def test_harvested_ttps_feed_the_fleet(tmp_path):
+    """§5.G -> §5.H: sandbox observations become fleet-wide indicators."""
+    feed_path = tmp_path / "fleet.jsonl"
+    phantom = PhantomInstance(tmp_path / "vm_a", feed_path=feed_path, instance_id="vm-a")
+    phantom.init()
+    phantom.enable_deception(
+        jurisdiction="EXAMPLE-1", reviewed_by="counsel@example.com",
+        permitted_jurisdictions=["EXAMPLE-1"],
+    )
+    phantom.write_user_file("notes.txt", "hello")
+    phantom.take_snapshot()
+    phantom.simulate_attack()
+    phantom.take_snapshot()
+    phantom.detect_and_respond()
+
+    published = phantom.publish_harvested_ttps()
+
+    assert published, "honeypot TTPs should reach the feed"
+    assert phantom.honeypot.harvested_hashes() <= phantom.feed.hashes()
+
+
+def test_intel_export_reflects_a_real_incident(tmp_path):
+    """End to end: an attack produces a verifiable subscriber bundle."""
+    from phantom.intel_export import verify_bundle
+
+    phantom = PhantomInstance(tmp_path / "phantom_state")
+    phantom.init()
+    phantom.write_user_file("notes.txt", "hello")
+    phantom.take_snapshot()
+    phantom.simulate_attack()
+    phantom.take_snapshot()
+    phantom.detect_and_respond()
+
+    bundle = phantom.intel_exporter.export(tier="intel")
+
+    assert bundle.indicator_count > 0
+    assert verify_bundle(bundle.to_json()) == []
+
+    # Revoking an indicator removes it from the next export.
+    revoked = bundle.indicators[0]["content_hash"]
+    phantom.revocations.revoke(revoked)
+    assert phantom.intel_exporter.export().indicator_count == bundle.indicator_count - 1
 
 
 def test_regeneration_survives_a_provider_outage(tmp_path):
