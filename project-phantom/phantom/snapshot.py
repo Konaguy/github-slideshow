@@ -4,10 +4,16 @@ Charter §5.A: "Block-level thin delta snapshots (30-60s intervals)."
 
 This MVP snapshots at file granularity rather than block granularity, but
 keeps the property that matters for the demo: only *changed* content is
-ever written to the store. Each file's bytes are addressed by their sha256
+ever written to storage. Each file's bytes are addressed by their sha256
 hash, so an unchanged file across two snapshots costs zero additional
-storage (dedup), and a snapshot's manifest is just a small pointer file
+writes (dedup), and a snapshot's manifest is just a small pointer file
 mapping relpath -> content hash.
+
+Blob storage itself is delegated to a `MultiRegionStore` (phantom/storage.py)
+rather than a single local directory, so snapshots are replicated across
+providers and survive a single provider outage (charter §6 Phase 2:
+"multi-region failover"). Manifests -- small pointer files, not bulk data
+-- stay in a single local control directory for this MVP.
 """
 from __future__ import annotations
 
@@ -17,6 +23,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
+
+from phantom.storage import MultiRegionStore
 
 
 @dataclass
@@ -28,19 +36,18 @@ class Snapshot:
 
 
 class SnapshotEngine:
-    """Snapshots a data directory into a content-addressed store.
+    """Snapshots a data directory, storing manifests locally and blob
+    content in `store` (a MultiRegionStore).
 
-    store_dir layout:
-      objects/<sha256>            content blobs (dedup'd across all snapshots)
+    control_dir layout:
       snapshots/<snapshot_id>.json  manifests (relpath -> hash), newest last
     """
 
-    def __init__(self, store_dir: Path):
-        self.store_dir = store_dir
-        self.objects_dir = store_dir / "objects"
-        self.snapshots_dir = store_dir / "snapshots"
-        self.objects_dir.mkdir(parents=True, exist_ok=True)
+    def __init__(self, control_dir: Path, store: MultiRegionStore):
+        self.control_dir = control_dir
+        self.snapshots_dir = control_dir / "snapshots"
         self.snapshots_dir.mkdir(parents=True, exist_ok=True)
+        self.store = store
 
     def take_snapshot(self, data_dir: Path) -> Snapshot:
         parent = self.latest_snapshot()
@@ -49,9 +56,8 @@ class SnapshotEngine:
             relpath = str(path.relative_to(data_dir))
             content = path.read_bytes()
             digest = hashlib.sha256(content).hexdigest()
-            blob_path = self.objects_dir / digest
-            if not blob_path.exists():  # new content only -- this is the "thin" part
-                blob_path.write_bytes(content)
+            if not self.store.has_any(digest):  # new content only -- this is the "thin" part
+                self.store.put(digest, content)
             files[relpath] = digest
 
         snapshot_id = time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime()) + f"-{len(files):04d}"
@@ -73,7 +79,7 @@ class SnapshotEngine:
             "files": snapshot.files,
         }, indent=2))
 
-    def list_snapshots(self) -> list[Snapshot]:
+    def list_snapshots(self) -> list:
         result = []
         for path in sorted(self.snapshots_dir.glob("*.json")):
             data = json.loads(path.read_text())
@@ -85,10 +91,11 @@ class SnapshotEngine:
         return snapshots[-1] if snapshots else None
 
     def read_blob(self, digest: str) -> bytes:
-        return (self.objects_dir / digest).read_bytes()
+        content, _provider_name = self.store.get(digest)
+        return content
 
     def restore(self, snapshot: Snapshot, dest_dir: Path) -> None:
-        """Reconstruct every file in `snapshot` under dest_dir from the object store."""
+        """Reconstruct every file in `snapshot` under dest_dir from storage."""
         dest_dir.mkdir(parents=True, exist_ok=True)
         for relpath, digest in snapshot.files.items():
             target = dest_dir / relpath
