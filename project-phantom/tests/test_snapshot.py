@@ -44,6 +44,30 @@ def test_take_snapshot_replicates_to_every_provider(tmp_path):
         assert len(list(provider.objects_dir.iterdir())) == 1
 
 
+def test_rapid_successive_snapshots_do_not_collide(tmp_path):
+    """Snapshots at 30-60s intervals routinely land in the same second; a
+    timestamp-only id would overwrite the previous manifest and erase the
+    history the detection engine compares against.
+    """
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "a.txt").write_text("one")
+    (data_dir / "b.txt").write_text("two")
+
+    engine, _providers = _engine(tmp_path)
+
+    first = engine.take_snapshot(data_dir)
+    # Same file count, same second -- the exact collision case.
+    (data_dir / "a.txt").write_text("one modified")
+    second = engine.take_snapshot(data_dir)
+
+    assert first.snapshot_id != second.snapshot_id
+    assert len(engine.list_snapshots()) == 2
+    assert second.parent_id == first.snapshot_id
+    # Chronological order must survive the lexical sort used to list them.
+    assert [s.snapshot_id for s in engine.list_snapshots()] == [first.snapshot_id, second.snapshot_id]
+
+
 def test_restore_reconstructs_files(tmp_path):
     data_dir = tmp_path / "data"
     data_dir.mkdir()

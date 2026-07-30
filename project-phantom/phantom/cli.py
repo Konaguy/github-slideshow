@@ -15,6 +15,12 @@ DEFAULT_ROOT = Path("./phantom_state")
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="phantom", description="Project Phantom MVP")
     parser.add_argument("--root", type=Path, default=DEFAULT_ROOT, help="state directory (default: ./phantom_state)")
+    parser.add_argument(
+        "--feed", type=Path, default=None,
+        help="path to a shared threat-intel feed; point several instances at one file to form a fleet "
+             "(default: per-instance feed inside --root)",
+    )
+    parser.add_argument("--instance-id", default="phantom-vm-0", help="identifier for this instance")
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("init", help="create the hardened baseline and spawn a fresh instance")
@@ -25,7 +31,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("snapshot", help="take a thin snapshot of the instance data dir, replicated to all providers")
 
-    sub.add_parser("attack", help="simulate a dormant-malware-style compromise of the instance")
+    p_attack = sub.add_parser("attack", help="simulate a compromise of the instance")
+    p_attack.add_argument(
+        "--mode", choices=["dropper", "encryption"], default="dropper",
+        help="dropper: plant malicious files alongside user data (default). "
+             "encryption: overwrite existing files in place with high-entropy content "
+             "(no known-bad hashes -- detection has to earn it)",
+    )
 
     p_regen = sub.add_parser("regen", help="manually trigger destroy + regenerate + restore")
     p_regen.add_argument("--reason", default="manual trigger", help="why regeneration was triggered")
@@ -51,6 +63,30 @@ def build_parser() -> argparse.ArgumentParser:
     session_sub = p_session.add_subparsers(dest="session_command", required=True)
     session_sub.add_parser("start", help="regenerate first if cadence is 'per_session'")
 
+    sub.add_parser(
+        "detect",
+        help="score the latest inter-snapshot delta for behavioral drift (no action taken)",
+    )
+
+    p_respond = sub.add_parser(
+        "detect-and-respond",
+        help="score the latest delta and auto-regenerate if it looks like an attack",
+    )
+    p_respond.add_argument(
+        "--no-share-intel", action="store_true",
+        help="don't contribute indicators to the fleet feed (models a customer who hasn't opted in)",
+    )
+
+    p_vault = sub.add_parser("vault", help="inspect the forensic evidence vault")
+    vault_sub = p_vault.add_subparsers(dest="vault_command", required=True)
+    vault_sub.add_parser("list", help="list captured evidence cases with chain-of-custody metadata")
+    vault_sub.add_parser("verify", help="verify the chain of custody and stored artifacts are untampered")
+
+    p_fleet = sub.add_parser("fleet", help="threat-intel feed / fleet immunity")
+    fleet_sub = p_fleet.add_subparsers(dest="fleet_command", required=True)
+    fleet_sub.add_parser("show", help="show indicators currently published to the feed")
+    fleet_sub.add_parser("pull", help="fold fleet indicators into this instance's local blocklist")
+
     p_providers = sub.add_parser("providers", help="inspect/simulate multi-region storage providers")
     providers_sub = p_providers.add_subparsers(dest="providers_command", required=True)
     providers_sub.add_parser("status", help="show availability of each configured provider")
@@ -64,7 +100,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv=None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    phantom = PhantomInstance(args.root)
+    phantom = PhantomInstance(args.root, feed_path=args.feed, instance_id=args.instance_id)
 
     if args.command == "init":
         phantom.init()
@@ -82,11 +118,75 @@ def main(argv=None) -> int:
         return 0
 
     if args.command == "attack":
+        if args.mode == "encryption":
+            encrypted = phantom.simulate_encryption_attack()
+            print("Simulated in-place encryption. Overwritten files:")
+            for relpath in encrypted:
+                print(f"  {relpath}")
+            return 0
         planted = phantom.simulate_attack()
         print("Simulated compromise. Planted files:")
         for relpath in planted:
             print(f"  {relpath}")
         return 0
+
+    if args.command == "detect":
+        result = phantom.detect()
+        if result is None:
+            print("No snapshots to evaluate")
+            return 0
+        print(result.summary())
+        return 0
+
+    if args.command == "detect-and-respond":
+        result, report = phantom.detect_and_respond(share_intel=not args.no_share_intel)
+        if result is None:
+            print("No snapshots to evaluate")
+            return 0
+        print(result.summary())
+        if report is None:
+            print("No action taken.")
+            return 0
+        print()
+        print(report.summary())
+        return 0 if (report.rto_pass and report.rpo_pass) else 1
+
+    if args.command == "vault":
+        if args.vault_command == "list":
+            entries = phantom.vault.entries()
+            if not entries:
+                print("Forensic vault is empty")
+                return 0
+            for entry in entries:
+                print(f"[{entry.sequence}] {entry.case_id}")
+                print(f"    captured_at: {entry.captured_at}   custodian: {entry.custodian}")
+                print(f"    reason: {entry.reason}")
+                print(f"    content_digest: {entry.content_digest[:16]}...  entry_hash: {entry.entry_hash[:16]}...")
+            return 0
+        if args.vault_command == "verify":
+            problems = phantom.vault.verify_chain()
+            if not problems:
+                print(f"Chain of custody intact across {len(phantom.vault.entries())} case(s)")
+                return 0
+            print("CHAIN OF CUSTODY COMPROMISED:")
+            for problem in problems:
+                print(f"  {problem}")
+            return 1
+
+    if args.command == "fleet":
+        if args.fleet_command == "show":
+            indicators = phantom.feed.indicators()
+            if not indicators:
+                print("Threat-intel feed is empty")
+                return 0
+            for indicator in indicators:
+                print(f"{indicator.content_hash[:16]}...  {indicator.label}  "
+                      f"published={indicator.published_at}  source={indicator.source_fingerprint}")
+            return 0
+        if args.fleet_command == "pull":
+            learned = phantom.pull_fleet_intel()
+            print(f"Learned {learned} new indicator(s) from the fleet feed")
+            return 0
 
     if args.command == "regen":
         report = phantom.regenerate(reason=args.reason)

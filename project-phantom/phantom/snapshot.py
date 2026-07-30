@@ -50,7 +50,8 @@ class SnapshotEngine:
         self.store = store
 
     def take_snapshot(self, data_dir: Path) -> Snapshot:
-        parent = self.latest_snapshot()
+        existing = self.list_snapshots()
+        parent = existing[-1] if existing else None
         files = {}
         for path in sorted(p for p in data_dir.rglob("*") if p.is_file()):
             relpath = str(path.relative_to(data_dir))
@@ -60,7 +61,11 @@ class SnapshotEngine:
                 self.store.put(digest, content)
             files[relpath] = digest
 
-        snapshot_id = time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime()) + f"-{len(files):04d}"
+        # The sequence number, not the timestamp, is what makes this unique:
+        # snapshots at 30-60s intervals can easily land in the same second,
+        # and a colliding id would silently overwrite the previous manifest.
+        # Zero-padded so lexical sort matches chronological order.
+        snapshot_id = time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime()) + f"-{len(existing):06d}"
         snapshot = Snapshot(
             snapshot_id=snapshot_id,
             taken_at=_now(),
