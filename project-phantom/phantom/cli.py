@@ -7,6 +7,8 @@ import json
 import sys
 from pathlib import Path
 
+from phantom.benchmark import SCALES as BENCHMARK_SCALES
+from phantom.benchmark import run_scale
 from phantom.chaos import ChaosRunner
 from phantom.intel_export import verify_bundle
 from phantom.orchestrator import PhantomInstance
@@ -121,6 +123,23 @@ def build_parser() -> argparse.ArgumentParser:
     p_chaos_run.add_argument(
         "--workdir", type=Path, default=None,
         help="scratch directory for scenario instances (default: <root>/chaos_runs)",
+    )
+
+    p_bench = sub.add_parser("benchmark", help="scale benchmark for the snapshot/restore path (§9 top risk)")
+    bench_sub = p_bench.add_subparsers(dest="benchmark_command", required=True)
+    p_bench_run = bench_sub.add_parser("run", help="measure snapshot/restore cost at a given scale")
+    p_bench_run.add_argument(
+        "--scale", default="small", choices=sorted(BENCHMARK_SCALES),
+        help="workload size preset (default: small). 'large' writes several GiB and takes minutes.",
+    )
+    p_bench_run.add_argument("--rounds", type=int, default=5, help="incremental snapshot rounds (default: 5)")
+    p_bench_run.add_argument(
+        "--workdir", type=Path, default=None,
+        help="scratch directory for generated data (default: <root>/benchmark_runs)",
+    )
+    p_bench_run.add_argument(
+        "--keep", action="store_true",
+        help="keep generated data and stores after the run instead of deleting them",
     )
 
     p_compliance = sub.add_parser("compliance", help="control-evidence report (NOT a certification)")
@@ -342,6 +361,23 @@ def main(argv=None) -> int:
         )
         print(report.summary())
         return 0 if report.passed else 1
+
+    if args.command == "benchmark" and args.benchmark_command == "run":
+        workdir = args.workdir or (args.root / "benchmark_runs")
+        results = run_scale(args.scale, workdir, rounds=args.rounds, keep=args.keep)
+        for result in results:
+            print(result.summary())
+            print()
+        phantom.audit.append(
+            "benchmark_run",
+            scale=args.scale,
+            rounds=args.rounds,
+            workloads=[r.workload.name for r in results],
+            overhead_pass=all(r.overhead_pass for r in results),
+            rto_pass=all(r.rto_pass for r in results),
+        )
+        # Exit non-zero when a §4 target is missed, so this can gate CI later.
+        return 0 if all(r.rto_pass and r.overhead_pass for r in results) else 1
 
     if args.command == "compliance" and args.compliance_command == "report":
         report = phantom.compliance.generate()
