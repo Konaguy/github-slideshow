@@ -10,6 +10,7 @@ from pathlib import Path
 from phantom.benchmark import SCALES as BENCHMARK_SCALES
 from phantom.benchmark import run_scale
 from phantom.chaos import ChaosRunner
+from phantom.dashboard import render_to_file
 from phantom.intel_export import verify_bundle
 from phantom.orchestrator import PhantomInstance
 from phantom.policy import DEFAULT_DAILY_INTERVAL_SECONDS
@@ -140,6 +141,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_bench_run.add_argument(
         "--keep", action="store_true",
         help="keep generated data and stores after the run instead of deleting them",
+    )
+
+    p_dash = sub.add_parser("dashboard", help="admin console (§5.J) rendered from real instance state")
+    dash_sub = p_dash.add_subparsers(dest="dashboard_command", required=True)
+    p_dash_render = dash_sub.add_parser("render", help="write a self-contained HTML console")
+    p_dash_render.add_argument(
+        "--out", type=Path, default=None,
+        help="output path (default: <root>/dashboard.html)",
+    )
+    p_dash_render.add_argument(
+        "--no-compliance", action="store_true",
+        help="skip the compliance section (it re-runs the control evaluation)",
     )
 
     p_compliance = sub.add_parser("compliance", help="control-evidence report (NOT a certification)")
@@ -378,6 +391,13 @@ def main(argv=None) -> int:
         )
         # Exit non-zero when a §4 target is missed, so this can gate CI later.
         return 0 if all(r.rto_pass and r.overhead_pass for r in results) else 1
+
+    if args.command == "dashboard" and args.dashboard_command == "render":
+        out = args.out or (args.root / "dashboard.html")
+        path = render_to_file(phantom, out, compliance=not args.no_compliance)
+        phantom.audit.append("dashboard_rendered", path=str(path))
+        print(f"Console written to {path}")
+        return 0
 
     if args.command == "compliance" and args.compliance_command == "report":
         report = phantom.compliance.generate()

@@ -378,6 +378,37 @@ Regeneration complete: reason=manual trigger: ransomware indicators
 network — the numbers above demonstrate the *mechanism*, not production
 latency. The <5 min / <1 min targets are the ones from charter §4.)
 
+## Admin console (§5.J)
+
+```bash
+python3 -m phantom dashboard render --out console.html
+```
+
+Renders a self-contained HTML console from real instance state: §4 RTO/RPO
+tiles, recovery history, storage-provider health, the forensic vault with
+its chain-verification result, the quarantine review queue, compliance
+evidence, and the audit trail. No dependencies, no external requests, no
+JavaScript; light and dark are separately stepped, not an inverted flip.
+
+**It is a point-in-time render, not a live console.** There is no server
+and no auto-refresh — the header timestamp says when it was generated.
+
+**Escaping is load-bearing, not hygiene.** This page displays strings the
+*attacker* chose: quarantined filenames come from the blocked payload, and
+the audit log quotes them back. A filename is an injection vector into the
+console an incident responder reads during a live incident, so every
+interpolated value goes through `esc()` and `tests/test_dashboard.py`
+asserts a `<img src=x onerror=...>` filename renders inert.
+
+**No authentication, authorization, or multi-tenancy** — whoever can run
+the command renders every case in the vault. That's why it ships as a file
+you generate rather than a service you expose, and it's one of the gaps
+between this prototype and anything pilot-ready.
+
+Sections with no underlying data say so ("No regenerations recorded yet")
+rather than showing a plausible-looking zero — a fresh instance must not
+display a passing `0.00s` RTO it never achieved.
+
 ## Scale benchmark — and what it found
 
 Charter §9 lists **"Snapshot overhead at scale"** as a High-impact risk
@@ -484,6 +515,7 @@ project-phantom/
     intel_export.py                     # subscriber bundles: TTL, revocation, tiers
     chaos.py                              # fault injection + recovery invariants
     compliance.py                           # control-evidence report (NOT certification)
+    dashboard.py                              # admin console: self-contained HTML (§5.J)
     benchmark.py                              # scale benchmark for snapshot/restore (§9 top risk)
     instance.py                               # disposable-instance driver (local workspace)
     metrics.py                                  # RTO/RPO timing + audit log
@@ -495,4 +527,5 @@ project-phantom/
     test_sanitize.py     test_fleet.py        test_chaos.py
     test_policy.py       test_e2e.py          test_compliance.py
                                               test_benchmark.py
+                                              test_dashboard.py
 ```
