@@ -2,3 +2,9 @@ _site/
 .sass-cache/
 .jekyll-metadata
 .bundle
+
+# project-phantom
+__pycache__/
+*.pyc
+.pytest_cache/
+project-phantom/phantom_state/
