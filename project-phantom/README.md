@@ -54,10 +54,12 @@ rather than more code:
 | J. Enterprise Integration (compliance slice) | `phantom/compliance.py` — control-evidence report built from the audit log, vault, and policy state. Reports gaps as loudly as coverage. Explicitly **not** a certification. |
 | K. Multi-Cloud Control Plane (initial, storage only) | `phantom/storage.py` — a `StorageProvider` interface with named providers standing in for AWS/Azure/private-cloud, fan-out replication on write, and failover on read. Phase 2 scope is explicitly "initial... abstraction," not the full control plane. |
 
-**Single VM, not a fleet.** The "instance" is a workspace directory
-(`InstanceDriver` in `phantom/instance.py`), not a real VM/container/hypervisor.
-The driver interface is intentionally the seam Phase 3's multi-cloud control
-plane (§5.K) will plug real KVM/QEMU and cloud drivers into.
+**Single VM, not a fleet.** The "instance" the orchestrator drives is a
+workspace directory (`InstanceDriver` in `phantom/instance.py`), not a real
+VM/container/hypervisor. Earlier revisions of this README called that
+interface "the seam cloud drivers plug into" — **that was wrong**, and the
+[Compute drivers](#compute-drivers--and-a-correction) section below explains
+why and what replaced it. The usable seam is `phantom/drivers/`.
 
 **Storage providers are still local disk.** There are no real cloud
 credentials available in this environment, so `aws-us-east-1`,
@@ -378,6 +380,69 @@ Regeneration complete: reason=manual trigger: ransomware indicators
 network — the numbers above demonstrate the *mechanism*, not production
 latency. The <5 min / <1 min targets are the ones from charter §4.)
 
+## Compute drivers — and a correction
+
+`phantom/drivers/` is a provider-agnostic contract that can express both a
+local workspace and a real cloud VM, with a shared conformance suite both
+implementations must pass.
+
+**It exists because the old claim was wrong.** This README described
+`InstanceDriver` (in `phantom/instance.py`) as "the seam Phase 3's cloud
+drivers plug into" from Phase 1 onward. It is not, and cannot be:
+
+```python
+def spawn_from_baseline(self, baseline_dir: Path, ...) -> None
+@property
+def data_dir(self) -> Path
+```
+
+Both signatures are filesystem-shaped. A cloud baseline is an AMI id, not
+a `Path`; a remote VM has no local `data_dir`. Implementing that Protocol
+for EC2 would require lying about the return types. The new contract uses
+opaque references and handles instead, and puts snapshot/restore *on the
+driver* — because on a real VM, data moves via EBS/Managed Disk snapshots
+taken from outside the guest, not by reading a local directory.
+
+That last point matters beyond tidiness: **EBS and Azure Managed Disk
+snapshots are already block-level incremental**, which is the fix for the
+12,288x write amplification the benchmark measured. Delegating to provider
+primitives may make writing our own chunking unnecessary — worth settling
+before building it.
+
+### The destroy guard
+
+Phantom's core loop is *programmatically terminating machines on a timer*.
+A scheduler bug here doesn't produce a wrong answer, it deletes
+infrastructure. So `destroy()` re-reads the target's tags **from the
+provider API** and refuses anything not carrying `phantom:managed=true`.
+
+This is deliberately redundant with IAM. IAM is the control that *should*
+stop it, but tag-condition policies are easy to get subtly wrong, and this
+costs one API call. Tests cover an untagged EC2 instance named
+`prod-database` surviving a destroy attempt, and a *forged handle* that
+claims Phantom ownership in its own metadata being refused anyway — a
+handle is a local object and is never authoritative.
+
+### Verification status — read this before trusting it
+
+The EC2 driver is verified against **`moto`**, not a real account. There
+are no cloud credentials in this repo or its CI.
+
+- **Verified:** call sequencing, tag propagation, the destroy guard, error
+  shapes, `exists` not raising on a vanished instance.
+- **Not verified:** real IAM behaviour, latency, eventual consistency on
+  tag reads, service quotas, or whether a restored volume actually boots.
+
+`EC2Driver.restore` is explicitly incomplete: it creates a volume from the
+snapshot and attaches it, but a production restore also stops the
+instance, detaches the old root volume, and reattaches at the right device
+name. That sequence depends on state transitions moto models only
+approximately, so verifying it here would manufacture false confidence.
+
+**The orchestrator still uses the old `phantom/instance.py`.** Wiring it
+onto this contract is a separate change with real blast radius across the
+existing suite.
+
 ## Admin console (§5.J)
 
 ```bash
@@ -516,6 +581,10 @@ project-phantom/
     chaos.py                              # fault injection + recovery invariants
     compliance.py                           # control-evidence report (NOT certification)
     dashboard.py                              # admin console: self-contained HTML (§5.J)
+    drivers/                                    # provider-agnostic compute contract
+      base.py                                     #   contract + destroy guard + conformance suite
+      local.py                                    #   local-workspace driver
+      aws.py                                      #   EC2 driver (moto-verified, not live-tested)
     benchmark.py                              # scale benchmark for snapshot/restore (§9 top risk)
     instance.py                               # disposable-instance driver (local workspace)
     metrics.py                                  # RTO/RPO timing + audit log
@@ -528,4 +597,6 @@ project-phantom/
     test_policy.py       test_e2e.py          test_compliance.py
                                               test_benchmark.py
                                               test_dashboard.py
+                                              test_drivers.py
+                                              test_drivers_aws.py
 ```

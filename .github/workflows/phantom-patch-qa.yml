@@ -27,5 +27,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install pytest
+      - run: pip install pytest boto3 "moto[ec2]"
       - run: python -m pytest -q
