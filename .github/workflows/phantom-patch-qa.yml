@@ -1,0 +1,31 @@
+name: Project Phantom - Patch/QA Pipeline
+
+# Charter §6 Phase 1: "Patch/QA pipeline stood up in parallel." This is a
+# stand-in for the QA-bot regression testing described in §5.I -- it runs
+# the Phase 1 MVP's regression suite on every change so future patch
+# packaging/baseline updates have a gate to land against.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "project-phantom/**"
+      - ".github/workflows/phantom-patch-qa.yml"
+  pull_request:
+    paths:
+      - "project-phantom/**"
+      - ".github/workflows/phantom-patch-qa.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: project-phantom
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pytest
+      - run: python -m pytest -q
