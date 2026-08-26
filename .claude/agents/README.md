@@ -20,6 +20,8 @@ A suite of Claude Code subagents for **authorized** bug bounty hunting and respo
 
 `subfinder`, `dnsx`, `httpx`, `katana`, `gau`, `ffuf` (Go) · `nuclei` + templates · `semgrep`, `gitleaks`.
 
+The **SessionStart hook** in `.claude/settings.json` runs the installer automatically at the start of every session (log: `/tmp/bb-setup.log`). `.claude/tools/scope-guard.sh` filters host/URL streams against a `scope.txt` allowlist so out-of-scope assets are dropped before any probing.
+
 Run it once per session before active recon/audit work:
 
 ```bash

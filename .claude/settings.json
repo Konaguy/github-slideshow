@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/tools/setup.sh >/tmp/bb-setup.log 2>&1 || true"
+          }
+        ]
+      }
+    ]
+  }
+}
