@@ -21,7 +21,15 @@ subfinder -d TARGET -silent | .claude/tools/scope-guard.sh scope.txt | dnsx -sil
 subfinder -d TARGET -silent | .claude/tools/scope-guard.sh scope.txt | httpx -silent -title -tech-detect -status-code -json > httpx.json
 katana -u https://TARGET -silent -jc -d 3 | .claude/tools/scope-guard.sh scope.txt > endpoints.txt
 gau TARGET | .claude/tools/scope-guard.sh scope.txt | sort -u >> endpoints.txt
+
+# Content & parameter discovery with ffuf + SecLists (respect rate limits!)
+WL="${SECLISTS_DIR:-$HOME/.local/share/seclists}"
+ffuf -u https://TARGET/FUZZ -w "$WL/Discovery/Web-Content/raft-medium-directories.txt" \
+     -mc 200,204,301,302,307,401,403 -rate 50 -t 20 -of json -o ffuf-dirs.json -s
+ffuf -u "https://TARGET/api?FUZZ=1" -w "$WL/Discovery/Web-Content/burp-parameter-names.txt" \
+     -mc all -fs 0 -rate 50 -t 20 -of json -o ffuf-params.json -s
 ```
+Only fuzz confirmed in-scope hosts. Tune `-rate`/`-t` to stay within the program's limits; use `-fs`/`-fc`/`-mc` to filter noise. Content discovery is high-volume — start conservative and never point it at an out-of-scope host.
 Rate-limit flags (`-rl`, `-rate-limit`) to honor program limits. **Always pipe host/URL streams through `.claude/tools/scope-guard.sh scope.txt`** — it drops anything not matching the confirmed in-scope allowlist, so out-of-scope assets can't be probed by accident. Do NOT run nuclei/exploit scanners here; that's the hunter's job.
 
 ## What you produce

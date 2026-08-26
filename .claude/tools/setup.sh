@@ -49,9 +49,22 @@ if ! have gitleaks; then
     && tar -C "$GOBIN" -xzf /tmp/gl.tgz gitleaks 2>/dev/null && rm -f /tmp/gl.tgz && log "gitleaks installed" || log "WARN: gitleaks failed"
 fi
 
+# --- SecLists wordlists (for ffuf content/param discovery) -------------------
+SECLISTS_DIR="${SECLISTS_DIR:-$HOME/.local/share/seclists}"
+if [ ! -d "$SECLISTS_DIR/Discovery" ]; then
+  log "fetching SecLists (shallow) into $SECLISTS_DIR..."
+  mkdir -p "$SECLISTS_DIR"
+  git clone --depth 1 https://github.com/danielmiessler/SecLists.git "$SECLISTS_DIR" >/dev/null 2>&1 \
+    && log "SecLists installed" || log "WARN: SecLists clone failed (fetch manually if needed)"
+else
+  log "SecLists present at $SECLISTS_DIR, skipping"
+fi
+export SECLISTS_DIR
+
 # --- nuclei templates -------------------------------------------------------
 have nuclei && { log "updating nuclei templates..."; nuclei -update-templates -silent >/dev/null 2>&1 || true; }
 
 log "done. Ensure PATH includes: /usr/local/go/bin and ${HOME}/go/bin"
+log "SecLists: $SECLISTS_DIR (set \$SECLISTS_DIR to override)"
 log "installed tools:"; for t in subfinder httpx nuclei katana dnsx ffuf gau semgrep gitleaks; do
   if have "$t"; then printf '  \033[1;32m✓\033[0m %s\n' "$t"; else printf '  \033[1;31m✗\033[0m %s\n' "$t"; fi; done
