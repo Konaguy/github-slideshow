@@ -308,9 +308,11 @@ incident connector.
   Trusted-Launch-capable size works):
 
   ```bash
-  # D2-class sizes with NO restrictions in your region
+  # D2-class sizes with NO restrictions in your region.
+  # Single quotes around --query are required so zsh does not mangle ? and `.
   az vm list-skus -l eastus --resource-type virtualMachines \
-    --query "[?starts_with(name,'Standard_D2') && length(restrictions)==\`0\`].name" -o tsv | sort -u
+    --query '[?starts_with(name, `Standard_D2`) && length(restrictions) == `0`].name' \
+    -o tsv | sort -u
   ```
 
   If nothing suitable is free in that region, switch regions - set `location`
