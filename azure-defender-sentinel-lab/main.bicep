@@ -260,6 +260,7 @@ module srv 'modules/vm.bicep' = {
     vmName: srvName
     vmSize: serverVmSize
     subnetId: networkWithDomainDns.outputs.labSubnetId
+    nicDnsServers: [ dcPrivateIp ]
     adminUsername: adminUsername
     adminPassword: adminPassword
     imagePublisher: 'MicrosoftWindowsServer'
@@ -292,6 +293,9 @@ module clients 'modules/vm.bicep' = [for name in clientNames: {
     vmName: name
     vmSize: clientVmSize
     subnetId: networkWithDomainDns.outputs.labSubnetId
+    nicDnsServers: [ dcPrivateIp ]
+    // Windows 11 client images do not support AutomaticByPlatform patching.
+    patchMode: 'AutomaticByOS'
     adminUsername: adminUsername
     adminPassword: adminPassword
     imagePublisher: 'MicrosoftWindowsDesktop'

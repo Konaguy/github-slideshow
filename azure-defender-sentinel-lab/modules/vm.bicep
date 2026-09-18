@@ -22,6 +22,13 @@ param adminPassword string
 @description('Static private IP. Empty string = dynamic. The DC needs a static IP so the VNet can point DNS at it.')
 param staticPrivateIp string = ''
 
+@description('DNS servers to pin directly on this VM NIC. Members set this to the DC IP so domain join resolves the forest without waiting on VNet-level DNS propagation. Empty = inherit VNet DNS.')
+param nicDnsServers array = []
+
+@description('Guest patch mode. Windows Server supports AutomaticByPlatform; Windows 11 client images do not, so clients must use AutomaticByOS.')
+@allowed([ 'AutomaticByPlatform', 'AutomaticByOS', 'Manual' ])
+param patchMode string = 'AutomaticByPlatform'
+
 param imagePublisher string
 param imageOffer string
 param imageSku string
@@ -79,6 +86,7 @@ resource nic 'Microsoft.Network/networkInterfaces@2023-11-01' = {
         }
       }
     ]
+    dnsSettings: empty(nicDnsServers) ? null : { dnsServers: nicDnsServers }
   }
 }
 
@@ -114,7 +122,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
         provisionVMAgent: true
         enableAutomaticUpdates: true
         patchSettings: {
-          patchMode: 'AutomaticByPlatform'
+          patchMode: patchMode
           assessmentMode: 'ImageDefault'
         }
       }
