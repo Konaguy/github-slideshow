@@ -16,8 +16,10 @@ param domainName = 'lab.local'
 param domainNetbiosName = 'LAB'
 
 // --- Machines ---------------------------------------------------------------
-param serverVmSize = 'Standard_D2s_v3'
-param clientVmSize = 'Standard_D2s_v3'
+// D2s_v3 is capacity-restricted in some regions; v5 has broader capacity.
+// If v5 is also restricted, run the az vm list-skus check in the README.
+param serverVmSize = 'Standard_D2s_v5'
+param clientVmSize = 'Standard_D2s_v5'
 param clientCount = 3
 param windowsServerSku = '2022-datacenter-azure-edition'
 param windows11Sku = 'win11-24h2-ent'

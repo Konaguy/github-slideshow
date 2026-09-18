@@ -302,8 +302,20 @@ incident connector.
 - **No logs in Sentinel.** Give it 15–20 minutes. Then check `Heartbeat` for the
   machine, and confirm the DCR associations exist on the VM (**VM → left
   menu → Data collection rules** in the Monitor blade).
-- **`SkuNotAvailable` / quota errors.** Pick another region or VM size, or raise
-  the `Dsv3` quota. Any Trusted-Launch-capable size works.
+- **`SkuNotAvailable` / capacity restriction.** The chosen VM size is not
+  available for your subscription in that region right now. Find a size that has
+  no restrictions and set `serverVmSize` / `clientVmSize` to it (any
+  Trusted-Launch-capable size works):
+
+  ```bash
+  # D2-class sizes with NO restrictions in your region
+  az vm list-skus -l eastus --resource-type virtualMachines \
+    --query "[?starts_with(name,'Standard_D2') && length(restrictions)==\`0\`].name" -o tsv | sort -u
+  ```
+
+  If nothing suitable is free in that region, switch regions - set `location`
+  (and re-run) to `eastus2`, `westus2`, `centralus`, etc. Newer families
+  (`_v5`, `_v6`) and B-series (`Standard_B2ms`) usually have the most capacity.
 
 ## Security note
 

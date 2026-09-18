@@ -18,7 +18,8 @@ resource mdcIncidents 'Microsoft.SecurityInsights/alertRules@2024-03-01' = {
   properties: {
     displayName: 'Create incidents from Microsoft Defender for Cloud alerts'
     enabled: true
-    productFilter: 'Microsoft Defender for Cloud'
+    // The API expects the legacy product token; 'Microsoft Defender for Cloud' is rejected.
+    productFilter: 'Azure Security Center'
     severitiesFilter: [ 'High', 'Medium', 'Low', 'Informational' ]
   }
 }
@@ -35,6 +36,7 @@ resource kerberoasting 'Microsoft.SecurityInsights/alertRules@2024-03-01' = {
     query: '''
 SecurityEvent
 | where EventID == 4769
+| extend TicketEncryptionType = columnifexists("TicketEncryptionType", "")
 | where TicketEncryptionType == "0x17"
 | where ServiceName !endswith "$" and ServiceName != "krbtgt"
 | where TargetUserName !endswith "$"
