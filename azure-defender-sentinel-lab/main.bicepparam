@@ -16,11 +16,11 @@ param domainName = 'lab.local'
 param domainNetbiosName = 'LAB'
 
 // --- Machines ---------------------------------------------------------------
-// DASv4 chosen because this subscription has quota there (DSv5 quota is 0).
-// Regional vCPU cap is 10 = exactly 5 VMs x 2. If this size is capacity-
-// restricted, try Standard_D2s_v4 or Standard_D2ds_v4 (also quota 10).
-param serverVmSize = 'Standard_D2as_v4'
-param clientVmSize = 'Standard_D2as_v4'
+// This subscription only has BOTH quota and capacity for v7 in eastus
+// (older D2 s-sizes report NotAvailableForSubscription). Dsv7 family quota
+// is 10 = exactly 5 VMs x 2. Alternatives with quota+capacity: D2as_v7, D2ds_v7.
+param serverVmSize = 'Standard_D2s_v7'
+param clientVmSize = 'Standard_D2s_v7'
 param clientCount = 3
 param windowsServerSku = '2022-datacenter-azure-edition'
 param windows11Sku = 'win11-24h2-ent'

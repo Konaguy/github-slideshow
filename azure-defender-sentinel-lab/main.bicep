@@ -78,10 +78,10 @@ param computerOuPath string = ''
 
 // --- Sizing -----------------------------------------------------------------
 @description('VM size for DC01 and SRV01. Must support Trusted Launch.')
-param serverVmSize string = 'Standard_D2as_v4'
+param serverVmSize string = 'Standard_D2s_v7'
 
 @description('VM size for the Windows 11 clients. Must support Trusted Launch.')
-param clientVmSize string = 'Standard_D2as_v4'
+param clientVmSize string = 'Standard_D2s_v7'
 
 @description('How many Windows 11 clients to build.')
 @minValue(1)
