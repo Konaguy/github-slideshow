@@ -32,7 +32,7 @@ SUB_ID="$(az account show --query id -o tsv)"
 SUB_NAME="$(az account show --query name -o tsv)"
 echo "Subscription: ${SUB_NAME} (${SUB_ID})"
 read -r -p "Deploy the lab into this subscription? [y/N] " confirm
-[[ "${confirm,,}" == "y" ]] || { echo "Aborted."; exit 0; }
+case "$confirm" in [yY]|[yY][eE][sS]) ;; *) echo "Aborted."; exit 0 ;; esac
 
 echo "Registering resource providers (no-op if already registered)..."
 for ns in Microsoft.Compute Microsoft.Network Microsoft.Storage \

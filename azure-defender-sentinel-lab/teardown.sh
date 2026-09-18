@@ -23,7 +23,7 @@ echo "Resource group: ${RESOURCE_GROUP}"
 echo "Workspace:      ${WORKSPACE_NAME} (will be purged, not soft-deleted)"
 echo
 read -r -p "Permanently delete all of the above? [y/N] " confirm
-[[ "${confirm,,}" == "y" ]] || { echo "Aborted."; exit 0; }
+case "$confirm" in [yY]|[yY][eE][sS]) ;; *) echo "Aborted."; exit 0 ;; esac
 
 if az monitor log-analytics workspace show -g "$RESOURCE_GROUP" -n "$WORKSPACE_NAME" >/dev/null 2>&1; then
   echo "Purging the Log Analytics workspace..."
