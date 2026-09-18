@@ -233,7 +233,7 @@ All in `main.bicepparam`.
 | `serverVmSize` / `clientVmSize`  | `Standard_D2s_v3`                    | Must support Trusted Launch |
 | `windows11Sku`                   | `win11-24h2-ent`                     | Client image SKU |
 | `defenderForServersPlan`         | `P2`                                 | `Free` \| `P1` \| `P2` |
-| `deployDefenderXdrConnector`     | `true`                               | Needs tenant-level rights; set `false` otherwise |
+| `deployDefenderXdrConnector`     | `false`                              | Not reliably ARM-deployable; connect from the portal (2 clicks) |
 | `dailyQuotaGb`                   | `5`                                  | Workspace ingestion cap |
 | `enableAutoShutdown` / `autoShutdownTime` | `true` / `1900`             | Daily VM shutdown (UTC by default) |
 | `scriptsBaseUri`                 | this branch's raw URL                | Where the VMs fetch the bootstrap scripts |
@@ -295,9 +295,10 @@ incident connector.
 - **Members won't join the domain.** Check that the VNet's DNS is `10.10.10.4`
   (`network-domain-dns` deployment) and that `Complete-DomainController.ps1`
   finished — look for `C:\LabSetup\dc-complete.marker` on `DC01`.
-- **Deployment fails on the Defender XDR connector.** You lack the tenant-level
-  role. Set `deployDefenderXdrConnector = false` and redeploy; connect it from
-  the portal.
+- **Defender XDR incidents in Sentinel.** The XDR connector is off by default
+  because it is not reliably deployable via ARM. Connect it from the portal:
+  **Sentinel → Configuration → Data connectors → Microsoft Defender XDR →
+  Open connector page → Connect incidents & alerts**. Two clicks, done.
 - **No logs in Sentinel.** Give it 15–20 minutes. Then check `Heartbeat` for the
   machine, and confirm the DCR associations exist on the VM (**VM → left
   menu → Data collection rules** in the Monitor blade).

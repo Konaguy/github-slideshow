@@ -26,9 +26,13 @@ resource dcrSecurityEvents 'Microsoft.Insights/dataCollectionRules@2023-03-11' =
         {
           name: 'securityEvents'
           streams: [ 'Microsoft-SecurityEvent' ]
+          // Azure caps each XPath query at 20 EventID expressions, so the Common
+          // set is split across two queries. AMA unions all queries in the list.
           xPathQueries: [
-            // Common set: logon/logoff, account & group management, process creation, policy change.
-            'Security!*[System[(EventID=1102 or EventID=4624 or EventID=4625 or EventID=4657 or EventID=4663 or EventID=4688 or EventID=4700 or EventID=4702 or EventID=4719 or EventID=4720 or EventID=4722 or EventID=4723 or EventID=4724 or EventID=4727 or EventID=4728 or EventID=4732 or EventID=4735 or EventID=4737 or EventID=4738 or EventID=4740 or EventID=4755 or EventID=4756 or EventID=4767 or EventID=4772 or EventID=4777 or EventID=4782 or EventID=4793 or EventID=4796 or EventID=4798 or EventID=4799 or EventID=4825 or EventID=4946 or EventID=4948 or EventID=4956 or EventID=5024 or EventID=5033 or EventID=8222)]]'
+            // Common set, part 1: logon/logoff, account & group management (18 IDs).
+            'Security!*[System[(EventID=1102 or EventID=4624 or EventID=4625 or EventID=4657 or EventID=4663 or EventID=4688 or EventID=4700 or EventID=4702 or EventID=4719 or EventID=4720 or EventID=4722 or EventID=4723 or EventID=4724 or EventID=4727 or EventID=4728 or EventID=4732 or EventID=4735 or EventID=4737)]]'
+            // Common set, part 2: policy change, privilege use, audit/log tamper (19 IDs).
+            'Security!*[System[(EventID=4738 or EventID=4740 or EventID=4755 or EventID=4756 or EventID=4767 or EventID=4772 or EventID=4777 or EventID=4782 or EventID=4793 or EventID=4796 or EventID=4798 or EventID=4799 or EventID=4825 or EventID=4946 or EventID=4948 or EventID=4956 or EventID=5024 or EventID=5033 or EventID=8222)]]'
             // Kerberos: 4768 TGT, 4769 service ticket (Kerberoasting), 4771 pre-auth failure (AS-REP roasting).
             'Security!*[System[(EventID=4768 or EventID=4769 or EventID=4771 or EventID=4776)]]'
             // Directory service changes / replication (DCSync shows as 4662 on the DC).

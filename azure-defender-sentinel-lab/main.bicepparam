@@ -38,9 +38,10 @@ param defenderForServersPlan = 'P2'
 param enableDefenderCspm = false
 param enableAncillaryDefenderPlans = false
 param deployDefenderForCloudConnector = true
-// Set to false if you are not Security Administrator / Global Administrator in
-// the tenant - the deployment will fail on this connector otherwise.
-param deployDefenderXdrConnector = true
+// Off by default: the Defender XDR connector is not reliably ARM-deployable
+// (Sentinel rejects the connector kind). Connect it from the portal instead -
+// Sentinel > Configuration > Data connectors > Microsoft Defender XDR > Connect.
+param deployDefenderXdrConnector = false
 param deployAnalyticsRules = true
 
 // --- Cost control -----------------------------------------------------------

@@ -123,8 +123,8 @@ param enableAncillaryDefenderPlans bool = false
 @description('Connect Defender for Cloud alerts to Sentinel.')
 param deployDefenderForCloudConnector bool = true
 
-@description('Connect Defender XDR incidents to Sentinel. Needs Entra ID Security Administrator - set false if the deployment fails on permissions.')
-param deployDefenderXdrConnector bool = true
+@description('Connect Defender XDR incidents to Sentinel. The XDR connector is not reliably deployable via ARM (Sentinel rejects the kind), so it is off by default - connect it from the portal in two clicks (see README). Flip to true only if you want to attempt the ARM path.')
+param deployDefenderXdrConnector bool = false
 
 @description('Deploy the starter analytics rules.')
 param deployAnalyticsRules bool = true
