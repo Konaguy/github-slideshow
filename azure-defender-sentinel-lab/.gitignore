@@ -1,0 +1,7 @@
+# Never commit secrets or local param overrides
+*.local.bicepparam
+*.secret.*
+.env
+# Compiled ARM output
+*.json.build
+main.json
