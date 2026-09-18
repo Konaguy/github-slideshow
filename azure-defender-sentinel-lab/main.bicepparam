@@ -16,10 +16,11 @@ param domainName = 'lab.local'
 param domainNetbiosName = 'LAB'
 
 // --- Machines ---------------------------------------------------------------
-// D2s_v3 is capacity-restricted in some regions; v5 has broader capacity.
-// If v5 is also restricted, run the az vm list-skus check in the README.
-param serverVmSize = 'Standard_D2s_v5'
-param clientVmSize = 'Standard_D2s_v5'
+// DASv4 chosen because this subscription has quota there (DSv5 quota is 0).
+// Regional vCPU cap is 10 = exactly 5 VMs x 2. If this size is capacity-
+// restricted, try Standard_D2s_v4 or Standard_D2ds_v4 (also quota 10).
+param serverVmSize = 'Standard_D2as_v4'
+param clientVmSize = 'Standard_D2as_v4'
 param clientCount = 3
 param windowsServerSku = '2022-datacenter-azure-edition'
 param windows11Sku = 'win11-24h2-ent'
