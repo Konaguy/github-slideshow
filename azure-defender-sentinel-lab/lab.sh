@@ -51,19 +51,29 @@ case "$CMD" in
     ;;
 
   start)
+    fails=0
     if az vm show -g "$RG" -n DC01 >/dev/null 2>&1; then
       echo "Starting DC01 first (so DNS/domain is up before members)..."
-      az vm start -g "$RG" -n DC01 -o none
+      if az vm start -g "$RG" -n DC01 -o none; then echo "  ok: DC01"; else echo "  FAILED: DC01"; fails=1; fi
     fi
     OTHERS=()
     while IFS= read -r _id; do [ -n "$_id" ] && OTHERS+=("$_id"); done \
       < <(az vm list -g "$RG" --query "[?name!='DC01'].id" -o tsv)
-    if [ "${#OTHERS[@]}" -gt 0 ]; then
-      echo "Starting the remaining VMs..."
-      az vm start --ids "${OTHERS[@]}"
-    fi
-    echo "All start operations completed."
+    # Start each individually so one failure does not stop the rest.
+    for _id in "${OTHERS[@]}"; do
+      _name="${_id##*/}"
+      echo "Starting ${_name}..."
+      if az vm start --ids "$_id" -o none; then echo "  ok: ${_name}"; else echo "  FAILED: ${_name}"; fails=1; fi
+    done
+    echo
     show_status
+    if [ "$fails" -ne 0 ]; then
+      echo
+      echo "Some VMs failed to start. Most common cause is transient capacity on"
+      echo "start (D2s_v7 re-allocation) - just re-run './lab.sh start' in a minute."
+      echo "If they start then vanish, an auto-shutdown watchdog is deallocating"
+      echo "them - see ./lab.sh (comments) or ask to disable the watchdogs."
+    fi
     ;;
 
   restart)
