@@ -21,7 +21,10 @@ az account show >/dev/null 2>&1 || { echo "Not logged in - run 'az login' first.
 SUB_NAME="$(az account show --query name -o tsv)"
 echo "Subscription: $SUB_NAME   |   Resource group: $RG"
 
-mapfile -t IDS < <(az vm list -g "$RG" --query "[].id" -o tsv)
+# Read VM ids into an array (bash 3.2 compatible - macOS has no mapfile).
+IDS=()
+while IFS= read -r _id; do [ -n "$_id" ] && IDS+=("$_id"); done \
+  < <(az vm list -g "$RG" --query "[].id" -o tsv)
 if [ "${#IDS[@]}" -eq 0 ]; then
   echo
   echo "No VMs found in '$RG' on this subscription."
@@ -52,7 +55,9 @@ case "$CMD" in
       echo "Starting DC01 first (so DNS/domain is up before members)..."
       az vm start -g "$RG" -n DC01 -o none
     fi
-    mapfile -t OTHERS < <(az vm list -g "$RG" --query "[?name!='DC01'].id" -o tsv)
+    OTHERS=()
+    while IFS= read -r _id; do [ -n "$_id" ] && OTHERS+=("$_id"); done \
+      < <(az vm list -g "$RG" --query "[?name!='DC01'].id" -o tsv)
     if [ "${#OTHERS[@]}" -gt 0 ]; then
       echo "Starting the remaining VMs..."
       az vm start --ids "${OTHERS[@]}"
