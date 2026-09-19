@@ -150,6 +150,18 @@ Defender for Business licence.
 
    For a fleet, push the same package via Intune or a GPO instead.
 
+   **Automated alternative (all clients in one command).** Once you have the
+   package, `onboard-clients.sh` distributes and runs it on every client from
+   your Mac (via a short-lived storage blob and `az vm run-command`, no Bastion
+   logins), then reports each Sense service status:
+
+   ```bash
+   MDE_PACKAGE=~/Downloads/WindowsDefenderATPOnboardingPackage.zip ./onboard-clients.sh
+   ```
+
+   It targets WIN11-01/02/03 by default, or pass specific names as arguments.
+   The temp storage account is deleted automatically when it finishes.
+
 ### 3. Confirm telemetry is flowing
 
 In **Sentinel → Logs**, after ~15–20 minutes:
