@@ -29,6 +29,24 @@ esac
 command -v az >/dev/null || { echo "Azure CLI not found." >&2; exit 1; }
 az account show >/dev/null 2>&1 || { echo "Run 'az login' first." >&2; exit 1; }
 
+# Only one run-command may execute on a VM at a time; wait out the conflict.
+invoke_rc() {  # invoke_rc <vm> <script-file>
+  local vm="$1" file="$2" attempt out
+  for attempt in $(seq 1 8); do
+    if out="$(az vm run-command invoke -g "$RG" -n "$vm" \
+                --command-id RunPowerShellScript --scripts "@$file" \
+                --query "value[].message" -o tsv --only-show-errors 2>&1)"; then
+      printf '%s\n' "$out"; return 0
+    fi
+    if printf '%s' "$out" | grep -qiE 'in progress|Conflict'; then
+      echo "  $vm busy with another run-command; waiting 30s (attempt $attempt/8)..."
+      sleep 30; continue
+    fi
+    echo "  $vm run-command error: $out" >&2; return 1
+  done
+  echo "  $vm still busy after retries - try again shortly." >&2; return 1
+}
+
 if [ "$DO_BUDGET" -eq 1 ]; then
   echo "=== Budget: \$$BUDGET/month with email alerts ==="
   START="$(date -u '+%Y-%m-01')"
@@ -60,9 +78,7 @@ if [ "$DO_SHUTDOWN" -eq 1 ]; then
       --role "Virtual Machine Contributor" --scope "$VMID" \
       --only-show-errors -o none 2>/dev/null || echo "  (role assignment already present)"
     # Install the scheduled task.
-    az vm run-command invoke -g "$RG" -n "$vm" \
-      --command-id RunPowerShellScript --scripts "@$TMP" \
-      --query "value[].message" -o tsv --only-show-errors
+    invoke_rc "$vm" "$TMP"
   done
   rm -f "$TMP"
   echo

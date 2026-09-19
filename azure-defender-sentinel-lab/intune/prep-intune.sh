@@ -25,10 +25,21 @@ MODE="prep"
 command -v az >/dev/null || { echo "Azure CLI not found." >&2; exit 1; }
 az account show >/dev/null 2>&1 || { echo "Run 'az login' first." >&2; exit 1; }
 
-run_on() {  # run_on <vm> <local-ps1>
-  az vm run-command invoke -g "$RG" -n "$1" \
-    --command-id RunPowerShellScript --scripts "@$2" \
-    --query "value[].message" -o tsv --only-show-errors
+run_on() {  # run_on <vm> <local-ps1> - waits out the one-run-command-per-VM conflict
+  local vm="$1" file="$2" attempt out
+  for attempt in $(seq 1 8); do
+    if out="$(az vm run-command invoke -g "$RG" -n "$vm" \
+                --command-id RunPowerShellScript --scripts "@$file" \
+                --query "value[].message" -o tsv --only-show-errors 2>&1)"; then
+      printf '%s\n' "$out"; return 0
+    fi
+    if printf '%s' "$out" | grep -qiE 'in progress|Conflict'; then
+      echo "  $vm busy with another run-command; waiting 30s (attempt $attempt/8)..."
+      sleep 30; continue
+    fi
+    echo "  $vm run-command error: $out" >&2; return 1
+  done
+  echo "  $vm still busy after retries - try again shortly." >&2; return 1
 }
 
 if [ "$MODE" = "prep" ]; then
