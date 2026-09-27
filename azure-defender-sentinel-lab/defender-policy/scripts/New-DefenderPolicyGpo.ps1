@@ -69,7 +69,7 @@ function Move-LabComputer {
     }
 }
 Move-LabComputer -Name 'SRV01' -Target $serversOu
-foreach ($n in @('WIN11-01', 'WIN11-02', 'WIN11-03')) { Move-LabComputer -Name $n -Target $workstationsOu }
+foreach ($n in @('WIN11-01', 'WIN11-02')) { Move-LabComputer -Name $n -Target $workstationsOu }
 
 # --- ASR rule GUIDs -------------------------------------------------------
 $asrRules = @(

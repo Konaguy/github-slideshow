@@ -51,7 +51,7 @@ Running **both** means the flat timer wins (it ignores activity). If you want
 active sessions to survive, use idle-based and **disable the flat timer**:
 
 ```bash
-for c in DC01 SRV01 WIN11-01 WIN11-02 WIN11-03; do
+for c in DC01 SRV01 WIN11-01 WIN11-02; do
   az vm run-command invoke -g rg-mdlab -n $c --command-id RunPowerShellScript \
     --scripts "Unregister-ScheduledTask -TaskName LabAutoDeallocate -Confirm:\$false"
 done

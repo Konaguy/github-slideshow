@@ -5,15 +5,16 @@ wired end to end into **Microsoft Defender for Cloud / Defender for Endpoint**
 and **Microsoft Sentinel**. Deploy it, generate some attacker noise, and watch
 incidents show up.
 
+> **Rebuilding on a new account?** Follow [`NEW-ACCOUNT-SETUP.md`](NEW-ACCOUNT-SETUP.md) from step 0.
+
 ## What gets built
 
 | Machine    | OS                                   | Role                                   | Size (default)   |
 |------------|--------------------------------------|----------------------------------------|------------------|
-| `DC01`     | Windows Server 2022 Azure Edition    | Forest root DC + DNS (`lab.local`)     | Standard_D2s_v3  |
-| `SRV01`    | Windows Server 2022 Azure Edition    | Domain-joined general-purpose server   | Standard_D2s_v3  |
-| `WIN11-01` | Windows 11 Enterprise (24H2)         | Domain-joined workstation              | Standard_D2s_v3  |
-| `WIN11-02` | Windows 11 Enterprise (24H2)         | Domain-joined workstation              | Standard_D2s_v3  |
-| `WIN11-03` | Windows 11 Enterprise (24H2)         | Domain-joined workstation              | Standard_D2s_v3  |
+| `DC01`     | Windows Server 2022 Azure Edition    | Forest root DC + DNS (`lab.local`)     | Standard_D2s_v7  |
+| `SRV01`    | Windows Server 2022 Azure Edition    | Domain-joined general-purpose server   | Standard_D2s_v7  |
+| `WIN11-01` | Windows 11 Enterprise (24H2)         | Domain-joined workstation              | Standard_D2s_v7  |
+| `WIN11-02` | Windows 11 Enterprise (24H2)         | Domain-joined workstation              | Standard_D2s_v7  |
 
 Plus the surrounding platform:
 
@@ -62,7 +63,7 @@ azure-defender-sentinel-lab/
 - For the **Defender XDR connector**: **Security Administrator** or **Global Administrator** in Entra ID.
   If you do not have that, set `deployDefenderXdrConnector = false` in `main.bicepparam` and connect it
   from the portal later — the rest of the lab deploys fine without it.
-- Quota for **10 vCPUs** of the `Dsv3` family in your region (5 × D2s_v3). Check with
+- Quota for **8 vCPUs** of the VM family in `serverVmSize`/`clientVmSize` in your region (4 × 2-vCPU VMs). Check with
   `az vm list-usage -l eastus -o table`.
 
 ## How the scripts reach the VMs
@@ -72,7 +73,7 @@ Extension, from the raw URL in the `scriptsBaseUri` parameter, which defaults to
 this branch on GitHub:
 
 ```
-https://raw.githubusercontent.com/konaguy/github-slideshow/refs/heads/claude/exciting-curie-806ybx/azure-defender-sentinel-lab/scripts/
+https://raw.githubusercontent.com/konaguy/github-slideshow/refs/heads/claude/youthful-mccarthy-tx0pkm/azure-defender-sentinel-lab/scripts/
 ```
 
 If you fork, rename the branch, or work in a private repo, **update
@@ -159,7 +160,7 @@ Defender for Business licence.
    MDE_PACKAGE=~/Downloads/WindowsDefenderATPOnboardingPackage.zip ./onboard-clients.sh
    ```
 
-   It targets WIN11-01/02/03 by default, or pass specific names as arguments.
+   It targets WIN11-01/02 by default, or pass specific names as arguments.
    The temp storage account is deleted automatically when it finishes.
 
 ### 3. Confirm telemetry is flowing
@@ -169,7 +170,7 @@ In **Sentinel → Logs**, after ~15–20 minutes:
 ```kql
 SecurityEvent | summarize count() by Computer | order by count_ desc
 Event | where Source == "Microsoft-Windows-Sysmon" | summarize count() by Computer
-Heartbeat | summarize arg_max(TimeGenerated, *) by Computer   // all 5 machines should report
+Heartbeat | summarize arg_max(TimeGenerated, *) by Computer   // all 4 machines should report
 ```
 
 ## Try the detections
@@ -240,7 +241,7 @@ All in `main.bicepparam`.
 | `prefix`                         | `mdlab`                              | Name stem for every resource; also `rg-<prefix>` and `<prefix>-law` |
 | `location`                       | `eastus`                             | Region |
 | `adminUsername`                  | `labadmin`                           | Must not be a reserved name (`administrator`, `admin`, …) |
-| `clientCount`                    | `3`                                  | Number of Windows 11 clients |
+| `clientCount`                    | `2`                                  | Number of Windows 11 clients |
 | `domainName` / `domainNetbiosName` | `lab.local` / `LAB`                | Forest root |
 | `serverVmSize` / `clientVmSize`  | `Standard_D2s_v3`                    | Must support Trusted Launch |
 | `windows11Sku`                   | `win11-24h2-ent`                     | Client image SKU |

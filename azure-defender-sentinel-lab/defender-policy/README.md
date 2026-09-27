@@ -29,7 +29,7 @@ anything — so you can watch impact before enforcing.
 | GPO | Linked to | Covers |
 |---|---|---|
 | `Lab - Defender Baseline - Servers (Audit)` | `OU=Servers,OU=Lab` + Domain Controllers OU | SRV01, DC01 |
-| `Lab - Defender Baseline - Workstations (Audit)` | `OU=Workstations,OU=Lab` | WIN11-01/02/03 |
+| `Lab - Defender Baseline - Workstations (Audit)` | `OU=Workstations,OU=Lab` | WIN11-01/02 |
 
 The script also **moves** SRV01 into `OU=Servers` and the clients into
 `OU=Workstations` (they domain-joined into the default Computers container),

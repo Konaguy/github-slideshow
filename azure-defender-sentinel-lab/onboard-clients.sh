@@ -15,7 +15,7 @@
 #
 # Usage:
 #   MDE_PACKAGE=~/Downloads/WindowsDefenderATPOnboardingPackage.zip ./onboard-clients.sh
-#   # optional: pass specific client names, else defaults to WIN11-01/02/03
+#   # optional: pass specific client names, else defaults to WIN11-01/02
 #   MDE_PACKAGE=... ./onboard-clients.sh WIN11-01 WIN11-02
 #
 set -euo pipefail
@@ -26,7 +26,7 @@ PKG="${MDE_PACKAGE:?Set MDE_PACKAGE to the path of the onboarding .zip downloade
 
 CLIENTS=("$@")
 if [ "${#CLIENTS[@]}" -eq 0 ]; then
-  CLIENTS=(WIN11-01 WIN11-02 WIN11-03)
+  CLIENTS=(WIN11-01 WIN11-02)
 fi
 
 [ -f "$PKG" ] || { echo "Package not found: $PKG" >&2; exit 1; }

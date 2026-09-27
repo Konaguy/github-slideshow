@@ -16,12 +16,13 @@ param domainName = 'lab.local'
 param domainNetbiosName = 'LAB'
 
 // --- Machines ---------------------------------------------------------------
-// This subscription only has BOTH quota and capacity for v7 in eastus
-// (older D2 s-sizes report NotAvailableForSubscription). Dsv7 family quota
-// is 10 = exactly 5 VMs x 2. Alternatives with quota+capacity: D2as_v7, D2ds_v7.
+// 4 VMs (DC01, SRV01, WIN11-01, WIN11-02) x 2 vCPU = 8 vCPU of this family.
+// New subscriptions often have little quota or capacity for a given family;
+// check before deploying (see NEW-ACCOUNT-SETUP.md step 2) and swap to any
+// Trusted Launch 2-vCPU size that has both, e.g. D2as_v5, D2s_v5, D2as_v7.
 param serverVmSize = 'Standard_D2s_v7'
 param clientVmSize = 'Standard_D2s_v7'
-param clientCount = 3
+param clientCount = 2
 param windowsServerSku = '2022-datacenter-azure-edition'
 param windows11Sku = 'win11-24h2-ent'
 

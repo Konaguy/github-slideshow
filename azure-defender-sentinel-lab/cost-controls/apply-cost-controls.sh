@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Applies both cost guardrails to the running lab, from your Mac:
-#   1. a $25 monthly budget that emails two addresses at 90% / 100% / forecast,
+#   1. a $25 monthly budget that emails the alert address at 90% / 100% / forecast,
 #   2. a 30-minute auto-DEALLOCATE on every VM (grants each VM's managed
 #      identity rights over itself, then installs the scheduled task).
 #
@@ -17,7 +17,7 @@ RG="${RESOURCE_GROUP:-rg-mdlab}"
 LOCATION="${LOCATION:-eastus}"
 DELAY_MINUTES="${DELAY_MINUTES:-30}"
 BUDGET="${BUDGET:-25}"
-VMS=(DC01 SRV01 WIN11-01 WIN11-02 WIN11-03)
+VMS=(DC01 SRV01 WIN11-01 WIN11-02)
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 DO_BUDGET=1; DO_SHUTDOWN=1

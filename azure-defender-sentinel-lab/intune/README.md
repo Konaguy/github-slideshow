@@ -1,6 +1,6 @@
 # Intune hybrid Entra join for the lab
 
-Bring the AD-domain-joined Windows 11 clients (`WIN11-01/02/03`) into **Microsoft
+Bring the AD-domain-joined Windows 11 clients (`WIN11-01/02`) into **Microsoft
 Intune** using **hybrid Entra join** — the clients keep their `lab.local` domain
 membership *and* gain an Entra ID identity, then auto-enroll into Intune.
 
@@ -14,19 +14,23 @@ AD prep, the auto-enrollment GPO, and verification — runs from your Mac with
 
 ## Prerequisites
 
-- Intune licensing on the tenant (M365 E3/E5, EMS E3/E5, or Intune standalone) — you have this.
-- A **verified custom domain** in Entra to use as the routable UPN suffix. Your
-  tenant is `3ch3lon.com`; confirm it shows **Verified** under
-  **Entra admin center → Identity → Settings → Domain names**. If it isn't
-  verified, either verify it or use `<tenant>.onmicrosoft.com` as the suffix.
-- The lab deployed and healthy (all five VMs joined to `lab.local`).
+- Intune licensing on the tenant (M365 E3/E5, EMS E3/E5, Business Premium, or
+  Intune Plan 1). A tenant created from a personal Azure sign-up has **none** —
+  start a trial first (see `../NEW-ACCOUNT-SETUP.md`, step 3).
+- A **routable, verified domain** to use as the UPN suffix. Use your tenant's
+  `<tenant>.onmicrosoft.com` domain (always verified), or a custom domain that
+  shows **Verified** under **Entra admin center → Identity → Settings → Domain names**.
+- A **work account** (`admin@<tenant>.onmicrosoft.com`) holding **Global
+  Administrator**. A personal Microsoft account (hotmail/outlook) cannot sign in
+  to the Entra Connect wizard.
+- The lab deployed and healthy (all four VMs joined to `lab.local`).
 
 ## Why the UPN suffix matters
 
 The domain is `lab.local`, which is **non-routable** — Entra Connect won't sync
 users with a `.local` UPN, and hybrid join needs a sign-in UPN that matches a
-verified tenant domain. So the first step adds `3ch3lon.com` as a UPN suffix in
-AD and repoints the lab users at it (`jdoe@3ch3lon.com`, etc.).
+verified tenant domain. So the first step adds `<tenant>.onmicrosoft.com` as a UPN
+suffix in AD and repoints the lab users at it (`jdoe@<tenant>.onmicrosoft.com`, etc.).
 
 ---
 
@@ -34,12 +38,12 @@ AD and repoints the lab users at it (`jdoe@3ch3lon.com`, etc.).
 
 ```bash
 cd azure-defender-sentinel-lab/intune
-UPN_SUFFIX=3ch3lon.com ./prep-intune.sh
+UPN_SUFFIX=<tenant>.onmicrosoft.com ./prep-intune.sh
 ```
 
 This runs, on `DC01`:
-1. **`Set-LabUpnSuffix.ps1`** — adds the `3ch3lon.com` UPN suffix to the forest
-   and updates every user under `OU=Lab` to `sam@3ch3lon.com`.
+1. **`Set-LabUpnSuffix.ps1`** — adds the `<tenant>.onmicrosoft.com` UPN suffix to the forest
+   and updates every user under `OU=Lab` to `sam@<tenant>.onmicrosoft.com`.
 2. **`New-MdmAutoEnrollGpo.ps1`** — creates and links a GPO ("Lab - Intune Auto
    Enrollment") that turns on automatic MDM enrollment using the device's Entra
    credential.
@@ -55,11 +59,12 @@ Connect to **SRV01** via Bastion (`LAB\labadmin`), then:
 3. **User sign-in**: pick **Password Hash Synchronization** (simplest for a lab;
    gives you sign-in + leaked-credential detection). Pass-through auth or ADFS
    also work but are heavier.
-4. **Connect to Entra ID**: sign in as a tenant **Global Administrator**.
+4. **Connect to Entra ID**: sign in as `admin@<tenant>.onmicrosoft.com`
+   (a **Global Administrator** work account — not the hotmail account).
 5. **Connect directories**: add the `lab.local` forest with **Enterprise Admin**
    credentials (`LAB\labadmin`).
 6. **Entra sign-in**: choose **userPrincipalName** as the attribute. The wizard
-   should show `3ch3lon.com` as verified — if it warns about unverified
+   should show `<tenant>.onmicrosoft.com` as verified — if it warns about unverified
    suffixes, you missed step 1 or the domain isn't verified in Entra.
 7. **Domain/OU filtering**: sync at least `OU=Lab` (users) and the **Computers**
    container (the clients live there unless you set `computerOuPath` at deploy).
@@ -92,7 +97,7 @@ it. First push policy + a sync (via run-command or Bastion):
 
 ```bash
 # force GPO + a device-registration attempt on all clients, from your Mac
-for c in WIN11-01 WIN11-02 WIN11-03; do
+for c in WIN11-01 WIN11-02; do
   az vm run-command invoke -g rg-mdlab -n $c --command-id RunPowerShellScript \
     --scripts "gpupdate /force; Start-Sleep 5; dsregcmd /join" \
     --query "value[].message" -o tsv --only-show-errors

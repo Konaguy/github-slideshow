@@ -21,7 +21,7 @@ param(
     [double]   $CpuThresholdPercent = 5,
     [int]      $WindowMinutes       = 30,
     [string]   $ResourceGroup       = 'rg-mdlab',
-    [string[]] $VmNames             = @('DC01', 'SRV01', 'WIN11-01', 'WIN11-02', 'WIN11-03')
+    [string[]] $VmNames             = @('DC01', 'SRV01', 'WIN11-01', 'WIN11-02')
 )
 
 $ErrorActionPreference = 'Stop'

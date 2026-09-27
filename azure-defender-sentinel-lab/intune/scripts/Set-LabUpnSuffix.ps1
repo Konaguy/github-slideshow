@@ -9,10 +9,10 @@
     every user under OU=Lab to samAccountName@<suffix>.
 
     Run on DC01 (elevated). The suffix MUST already be a *verified* custom domain in
-    your Entra tenant (e.g. 3ch3lon.com), or use <tenant>.onmicrosoft.com.
+    your Entra tenant (e.g. <tenant>.onmicrosoft.com), or use <tenant>.onmicrosoft.com.
 
 .EXAMPLE
-    .\Set-LabUpnSuffix.ps1 -UpnSuffix 3ch3lon.com
+    .\Set-LabUpnSuffix.ps1 -UpnSuffix <tenant>.onmicrosoft.com
 #>
 [CmdletBinding()]
 param(
@@ -22,7 +22,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 if ($UpnSuffix -eq '__UPN_SUFFIX__' -or [string]::IsNullOrWhiteSpace($UpnSuffix)) {
-    throw 'Pass -UpnSuffix <routable-verified-domain>, e.g. 3ch3lon.com'
+    throw 'Pass -UpnSuffix <routable-verified-domain>, e.g. <tenant>.onmicrosoft.com'
 }
 
 Import-Module ActiveDirectory

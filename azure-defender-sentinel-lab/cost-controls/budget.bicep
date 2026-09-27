@@ -24,8 +24,7 @@ param endDate string = '2031-09-01'
 
 @description('Addresses that receive the alert emails.')
 param contactEmails array = [
-  'ed.cleveland@3ch3lon.com'
-  'escleveland@outlook.com'
+  'escleveland_@hotmail.com'
 ]
 
 param budgetName string = 'lab-budget-usd${amount}'

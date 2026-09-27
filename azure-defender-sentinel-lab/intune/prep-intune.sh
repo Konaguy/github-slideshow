@@ -10,14 +10,14 @@
 #   3. reports hybrid-join status on each client
 #
 # Usage:
-#   UPN_SUFFIX=3ch3lon.com ./prep-intune.sh            # steps 1 + 2
-#   UPN_SUFFIX=3ch3lon.com ./prep-intune.sh --status   # step 3 only (after Entra Connect + gpupdate)
+#   UPN_SUFFIX=<tenant>.onmicrosoft.com ./prep-intune.sh            # steps 1 + 2
+#   UPN_SUFFIX=<tenant>.onmicrosoft.com ./prep-intune.sh --status   # step 3 only (after Entra Connect + gpupdate)
 #
 set -euo pipefail
 
 RG="${RESOURCE_GROUP:-rg-mdlab}"
 UPN_SUFFIX="${UPN_SUFFIX:-}"
-CLIENTS=(WIN11-01 WIN11-02 WIN11-03)
+CLIENTS=(WIN11-01 WIN11-02)
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts"
 MODE="prep"
 [ "${1:-}" = "--status" ] && MODE="status"
@@ -43,7 +43,7 @@ run_on() {  # run_on <vm> <local-ps1> - waits out the one-run-command-per-VM con
 }
 
 if [ "$MODE" = "prep" ]; then
-  [ -n "$UPN_SUFFIX" ] || { echo "Set UPN_SUFFIX to your verified Entra domain, e.g. UPN_SUFFIX=3ch3lon.com" >&2; exit 1; }
+  [ -n "$UPN_SUFFIX" ] || { echo "Set UPN_SUFFIX to your verified Entra domain, e.g. UPN_SUFFIX=<tenant>.onmicrosoft.com" >&2; exit 1; }
 
   echo "=== 1/2 UPN suffix + lab users (DC01) ==="
   TMP="$(mktemp -t upn.XXXXXX.ps1)"

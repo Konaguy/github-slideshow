@@ -21,7 +21,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 VMS=("$@")
 if [ "${#VMS[@]}" -eq 0 ]; then
-  VMS=(DC01 SRV01 WIN11-01 WIN11-02 WIN11-03)
+  VMS=(DC01 SRV01 WIN11-01 WIN11-02)
 fi
 
 command -v az >/dev/null || { echo "Azure CLI not found." >&2; exit 1; }

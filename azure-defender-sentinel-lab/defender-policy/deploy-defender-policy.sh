@@ -15,7 +15,7 @@ set -euo pipefail
 RG="${RESOURCE_GROUP:-rg-mdlab}"
 MODE="${MODE:-Audit}"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MEMBERS=(SRV01 WIN11-01 WIN11-02 WIN11-03)
+MEMBERS=(SRV01 WIN11-01 WIN11-02)
 
 command -v az >/dev/null || { echo "Azure CLI not found." >&2; exit 1; }
 az account show >/dev/null 2>&1 || { echo "Run 'az login' first." >&2; exit 1; }

@@ -13,7 +13,7 @@
     2 Data Collection Rules   Security Events, and Sysmon/PowerShell/Defender
     DC01     Windows Server 2022, new AD forest, DNS, static 10.10.10.4
     SRV01    Windows Server 2022, domain joined, file/app server
-    WIN11-01..03  Windows 11 Enterprise, domain joined
+    WIN11-01..02  Windows 11 Enterprise, domain joined
     Defender for Cloud plans + Sentinel connectors + 4 starter analytics rules
 
   Deploy:
@@ -86,7 +86,7 @@ param clientVmSize string = 'Standard_D2s_v7'
 @description('How many Windows 11 clients to build.')
 @minValue(1)
 @maxValue(10)
-param clientCount int = 3
+param clientCount int = 2
 
 @description('Windows 11 image SKU. Client images require Windows_Client licence attestation (see README).')
 param windows11Sku string = 'win11-24h2-ent'
@@ -131,7 +131,7 @@ param deployAnalyticsRules bool = true
 
 // --- Bootstrap scripts ------------------------------------------------------
 @description('Base URI the Custom Script Extension pulls the PowerShell bootstrap scripts from. Must end with a slash and be reachable from the VMs.')
-param scriptsBaseUri string = 'https://raw.githubusercontent.com/konaguy/github-slideshow/refs/heads/claude/exciting-curie-806ybx/azure-defender-sentinel-lab/scripts/'
+param scriptsBaseUri string = 'https://raw.githubusercontent.com/konaguy/github-slideshow/refs/heads/claude/youthful-mccarthy-tx0pkm/azure-defender-sentinel-lab/scripts/'
 
 // --- Cost control -----------------------------------------------------------
 param enableAutoShutdown bool = true

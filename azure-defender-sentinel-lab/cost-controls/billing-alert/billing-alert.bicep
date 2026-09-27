@@ -29,8 +29,7 @@ param resourceGroupName string = 'rg-mdlab'
 
 @description('Email recipients.')
 param contactEmails array = [
-  'ed.cleveland@3ch3lon.com'
-  'escleveland@outlook.com'
+  'escleveland_@hotmail.com'
 ]
 
 @description('SMS country code without +, e.g. 1 for US/Canada.')

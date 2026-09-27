@@ -4,8 +4,7 @@ Two guardrails for the lab:
 
 1. **30-minute auto-deallocate** — every VM deallocates 30 minutes after it
    starts, so an idle (or forgotten) lab stops billing compute quickly.
-2. **$25 budget email alert** — emails `ed.cleveland@3ch3lon.com` and
-   `escleveland@outlook.com` when spend reaches 90% and 100% of $25, and when
+2. **$25 budget email alert** — emails `escleveland_@hotmail.com` when spend reaches 90% and 100% of $25, and when
    forecast spend is projected to hit 100%.
 
 ## Apply both (from your Mac)

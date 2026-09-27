@@ -24,7 +24,7 @@ param idleCpuThresholdPercent int = 5
 param idleWindowMinutes int = 30
 
 @description('Raw base URI the runbook bodies are pulled from. Must end with a slash.')
-param runbooksBaseUri string = 'https://raw.githubusercontent.com/konaguy/github-slideshow/refs/heads/claude/exciting-curie-806ybx/azure-defender-sentinel-lab/cost-controls/enforcement/runbooks/'
+param runbooksBaseUri string = 'https://raw.githubusercontent.com/konaguy/github-slideshow/refs/heads/claude/youthful-mccarthy-tx0pkm/azure-defender-sentinel-lab/cost-controls/enforcement/runbooks/'
 
 @description('Schedule base start time; must be >5 min in the future. Leave default.')
 param scheduleStart string = dateTimeAdd(utcNow(), 'PT1H')
