@@ -1,0 +1,993 @@
+<title>CyberShield Analytics</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap">
+
+<style>
+  /* Layout: dark-first command-center, three-tier agent grid */
+  :root {
+    --bg:        #0a0e1a;
+    --surface:   #111827;
+    --border:    #1e293b;
+    --border-hi: #2d3f5a;
+    --fg:        #e2e8f0;
+    --fg-muted:  #94a3b8;
+    --accent:    #00d4ff;
+    --accent-dim:#0ea5e9;
+    --green:     #10b981;
+    --amber:     #f59e0b;
+    --red:       #ef4444;
+    --orange:    #f97316;
+    --mono:      'JetBrains Mono', 'Courier New', monospace;
+    --sans:      'Inter', system-ui, sans-serif;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg:        #f0f4ff;
+      --surface:   #ffffff;
+      --border:    #dde3f0;
+      --border-hi: #c5cfe8;
+      --fg:        #0f172a;
+      --fg-muted:  #475569;
+      --accent:    #0284c7;
+      --accent-dim:#0369a1;
+      color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg:        #f0f4ff;
+    --surface:   #ffffff;
+    --border:    #dde3f0;
+    --border-hi: #c5cfe8;
+    --fg:        #0f172a;
+    --fg-muted:  #475569;
+    --accent:    #0284c7;
+    --accent-dim:#0369a1;
+    color-scheme: light;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0 16px;
+    padding-block: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page { max-width: 1100px; margin: 0 auto; }
+
+  /* ── NAV ── */
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  .logo svg { flex-shrink: 0; }
+  .nav-links {
+    display: flex;
+    gap: 24px;
+    list-style: none;
+    margin: 0; padding: 0;
+  }
+  .nav-links a {
+    font-size: 13px;
+    color: var(--fg-muted);
+    text-decoration: none;
+    letter-spacing: .02em;
+    transition: color .15s;
+  }
+  .nav-links a:hover { color: var(--fg); }
+  .nav-badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    background: color-mix(in srgb, var(--green) 15%, transparent);
+    color: var(--green);
+    border: 1px solid color-mix(in srgb, var(--green) 35%, transparent);
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: .04em;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 72px 0 56px;
+    text-align: center;
+  }
+  .hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .hero h1 {
+    font-family: var(--mono);
+    font-size: clamp(36px, 6vw, 64px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -.01em;
+    margin: 0 0 20px;
+    text-wrap: balance;
+  }
+  .hero h1 span { color: var(--accent); }
+  .hero-sub {
+    font-size: clamp(15px, 2vw, 18px);
+    color: var(--fg-muted);
+    max-width: 580px;
+    margin: 0 auto 36px;
+    text-wrap: balance;
+  }
+  .hero-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    padding: 11px 22px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: opacity .15s, transform .1s;
+  }
+  .btn:hover { opacity: .85; transform: translateY(-1px); }
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+  }
+  .btn-outline {
+    background: transparent;
+    color: var(--fg);
+    border: 1px solid var(--border-hi);
+  }
+
+  /* ── STATUS BAR ── */
+  .status-bar {
+    display: flex;
+    gap: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 64px;
+  }
+  .status-item {
+    flex: 1;
+    padding: 14px 18px;
+    border-right: 1px solid var(--border);
+    min-width: 0;
+  }
+  .status-item:last-child { border-right: none; }
+  .status-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--fg-muted);
+    margin-bottom: 4px;
+  }
+  .status-val {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .val-green { color: var(--green); }
+  .val-amber { color: var(--amber); }
+  .val-accent { color: var(--accent); }
+  .val-muted { color: var(--fg-muted); }
+
+  /* ── SECTION ── */
+  section { margin-bottom: 72px; }
+  .section-header { margin-bottom: 32px; }
+  .section-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .section-header h2 {
+    font-family: var(--mono);
+    font-size: clamp(22px, 3vw, 30px);
+    font-weight: 700;
+    margin: 0 0 8px;
+    letter-spacing: -.01em;
+  }
+  .section-header p {
+    color: var(--fg-muted);
+    margin: 0;
+    max-width: 560px;
+    font-size: 15px;
+  }
+
+  /* ── TIER LABELS ── */
+  .tier {
+    margin-bottom: 40px;
+  }
+  .tier-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .tier-label span {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+  .tier-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── AGENT GRID ── */
+  .agent-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+  }
+  .agent-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .15s;
+  }
+  .agent-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--card-accent, var(--accent));
+  }
+  .agent-card:hover { border-color: var(--border-hi); }
+  .agent-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    gap: 8px;
+  }
+  .agent-name {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--card-accent, var(--accent));
+  }
+  .agent-status {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    letter-spacing: .06em;
+    flex-shrink: 0;
+  }
+  .status-active {
+    background: color-mix(in srgb, var(--green) 15%, transparent);
+    color: var(--green);
+    border: 1px solid color-mix(in srgb, var(--green) 30%, transparent);
+  }
+  .status-config {
+    background: color-mix(in srgb, var(--amber) 15%, transparent);
+    color: var(--amber);
+    border: 1px solid color-mix(in srgb, var(--amber) 30%, transparent);
+  }
+  .agent-role {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--fg);
+    margin-bottom: 6px;
+  }
+  .agent-desc {
+    font-size: 13px;
+    color: var(--fg-muted);
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+  .agent-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .tool-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--fg-muted);
+    background: color-mix(in srgb, var(--fg-muted) 10%, transparent);
+    padding: 2px 7px;
+    border-radius: 3px;
+    letter-spacing: .03em;
+  }
+
+  /* SARGE card — special styling */
+  .sarge-card {
+    background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .sarge-card::before {
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--green));
+  }
+  .sarge-main { flex: 1; min-width: 200px; }
+  .sarge-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 160px;
+  }
+  .sarge-stat {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+  }
+  .sarge-stat-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--fg-muted);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .sarge-stat-val {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  /* ── HOW IT WORKS ── */
+  .pipeline {
+    display: flex;
+    gap: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    flex-wrap: wrap;
+  }
+  .pipeline-step {
+    flex: 1;
+    min-width: 180px;
+    padding: 24px 20px;
+    border-right: 1px solid var(--border);
+    position: relative;
+  }
+  .pipeline-step:last-child { border-right: none; }
+  .step-num {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 700;
+    color: color-mix(in srgb, var(--accent) 25%, transparent);
+    line-height: 1;
+    margin-bottom: 10px;
+  }
+  .step-title {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--fg);
+    margin-bottom: 6px;
+  }
+  .step-desc {
+    font-size: 13px;
+    color: var(--fg-muted);
+    line-height: 1.5;
+  }
+
+  /* ── STACK ── */
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  .stack-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .stack-name {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--fg);
+  }
+  .stack-role {
+    font-size: 12px;
+    color: var(--fg-muted);
+  }
+  .stack-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin-bottom: 4px;
+    flex-shrink: 0;
+    align-self: flex-start;
+  }
+
+  /* ── THREAT LEVEL ── */
+  .threat-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .threat-table th {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    text-align: left;
+    padding: 10px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .threat-table td {
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .threat-table tr { background: var(--bg); }
+  .threat-table tr:nth-child(even) { background: var(--surface); }
+  .level-badge {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    padding: 3px 10px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .level-green  { background: color-mix(in srgb, #10b981 18%, transparent); color: #10b981; }
+  .level-yellow { background: color-mix(in srgb, #eab308 18%, transparent); color: #ca8a04; }
+  .level-orange { background: color-mix(in srgb, #f97316 18%, transparent); color: #ea580c; }
+  .level-red    { background: color-mix(in srgb, #ef4444 18%, transparent); color: #ef4444; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 28px 0 36px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  footer p {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--fg-muted);
+    margin: 0;
+    letter-spacing: .03em;
+  }
+  .footer-links {
+    display: flex;
+    gap: 18px;
+    list-style: none;
+    margin: 0; padding: 0;
+  }
+  .footer-links a {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--fg-muted);
+    text-decoration: none;
+  }
+  .footer-links a:hover { color: var(--accent); }
+
+  /* ── DIVIDER ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 48px 0;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .status-bar { flex-direction: column; }
+    .status-item { border-right: none; border-bottom: 1px solid var(--border); }
+    .status-item:last-child { border-bottom: none; }
+    .sarge-card { flex-direction: column; }
+    .sarge-stats { flex-direction: row; flex-wrap: wrap; }
+    .pipeline { flex-direction: column; }
+    .pipeline-step { border-right: none; border-bottom: 1px solid var(--border); }
+    .pipeline-step:last-child { border-bottom: none; }
+    .nav-links { display: none; }
+  }
+</style>
+
+<div class="page">
+
+  <!-- NAV -->
+  <nav>
+    <div class="logo">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <path d="M11 2L3 6V11C3 15.42 6.46 19.58 11 20.93C15.54 19.58 19 15.42 19 11V6L11 2Z"
+              fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M8 11L10 13L14 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      CyberShield Analytics
+    </div>
+    <ul class="nav-links">
+      <li><a href="#agents">Agents</a></li>
+      <li><a href="#stack">Stack</a></li>
+      <li><a href="#threat-levels">Threat Levels</a></li>
+      <li><a href="#setup">Setup</a></li>
+    </ul>
+    <span class="nav-badge">● LIVE</span>
+  </nav>
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="hero-eyebrow">AI-Powered Security Operations</div>
+    <h1>10 Agents.<br><span>One Command Center.</span></h1>
+    <p class="hero-sub">CyberShield is an autonomous security stack of specialized AI agents that monitor, detect, respond, and brief — so you don't have to watch every dashboard.</p>
+    <div class="hero-actions">
+      <a href="#agents" class="btn btn-primary">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="7" r="6" fill-opacity=".25"/><circle cx="7" cy="7" r="3"/></svg>
+        View Agents
+      </a>
+      <a href="#setup" class="btn btn-outline">Quick Setup →</a>
+    </div>
+  </header>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <div class="status-item">
+      <div class="status-label">Wazuh Manager</div>
+      <div class="status-val val-green">ONLINE</div>
+    </div>
+    <div class="status-item">
+      <div class="status-label">Endpoints</div>
+      <div class="status-val val-accent">1</div>
+    </div>
+    <div class="status-item">
+      <div class="status-label">Threat Level</div>
+      <div class="status-val val-green">GREEN</div>
+    </div>
+    <div class="status-item">
+      <div class="status-label">n8n Automation</div>
+      <div class="status-val val-green">RUNNING</div>
+    </div>
+    <div class="status-item">
+      <div class="status-label">Active Agents</div>
+      <div class="status-val val-accent">10</div>
+    </div>
+    <div class="status-item">
+      <div class="status-label">Domain</div>
+      <div class="status-val val-muted" style="font-size:13px">sarge.cloud</div>
+    </div>
+  </div>
+
+  <!-- AGENTS -->
+  <section id="agents">
+    <div class="section-header">
+      <div class="section-eyebrow">Agent Architecture</div>
+      <h2>Three-Tier Security Coverage</h2>
+      <p>Each agent runs with a distinct scope, toolset, and escalation path. Sarge coordinates the full stack and delivers daily briefings.</p>
+    </div>
+
+    <!-- SARGE (coordinator) -->
+    <div style="margin-bottom: 32px;">
+      <div class="tier-label">
+        <span>Coordinator</span>
+        <div class="tier-line"></div>
+      </div>
+      <div class="agent-grid">
+        <div class="agent-card sarge-card" style="--card-accent: var(--accent)">
+          <div class="sarge-main">
+            <div class="agent-header">
+              <div class="agent-name">Sarge</div>
+              <span class="agent-status status-active">ACTIVE</span>
+            </div>
+            <div class="agent-role">IT Security Threat Manager</div>
+            <div class="agent-desc">The brain of CyberShield. Sarge ingests findings from all 9 sub-agents, assigns threat levels, dispatches response tasks, and delivers the daily briefing via Slack. Every critical escalation goes through Sarge.</div>
+            <div class="agent-tools">
+              <span class="tool-tag">Wazuh API</span>
+              <span class="tool-tag">n8n Workflows</span>
+              <span class="tool-tag">Claude API</span>
+              <span class="tool-tag">Slack</span>
+              <span class="tool-tag">PagerDuty</span>
+            </div>
+          </div>
+          <div class="sarge-stats">
+            <div class="sarge-stat">
+              <div class="sarge-stat-label">Agents Under Command</div>
+              <div class="sarge-stat-val">9</div>
+            </div>
+            <div class="sarge-stat">
+              <div class="sarge-stat-label">Briefing Schedule</div>
+              <div class="sarge-stat-val" style="font-size:14px">08:00 daily</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIER 1 -->
+    <div class="tier">
+      <div class="tier-label">
+        <span>Tier 1 — Monitoring</span>
+        <div class="tier-line"></div>
+      </div>
+      <div class="agent-grid">
+        <div class="agent-card" style="--card-accent: #22d3ee">
+          <div class="agent-header">
+            <div class="agent-name" style="color: #22d3ee">NetWatch</div>
+            <span class="agent-status status-active">ACTIVE</span>
+          </div>
+          <div class="agent-role">Network Traffic &amp; Anomaly Detection</div>
+          <div class="agent-desc">Monitors outbound connections, DNS lookups, and traffic patterns. Flags Tor, C2, and unusual geo-destinations. Cross-references against VirusTotal, OTX, and URLhaus.</div>
+          <div class="agent-tools">
+            <span class="tool-tag">Shodan</span>
+            <span class="tool-tag">VirusTotal</span>
+            <span class="tool-tag">OTX</span>
+            <span class="tool-tag">URLhaus</span>
+            <span class="tool-tag">WinRM</span>
+          </div>
+        </div>
+        <div class="agent-card" style="--card-accent: #a78bfa">
+          <div class="agent-header">
+            <div class="agent-name" style="color: #a78bfa">VulnScan</div>
+            <span class="agent-status status-active">ACTIVE</span>
+          </div>
+          <div class="agent-role">Vulnerability Discovery &amp; CVE Tracking</div>
+          <div class="agent-desc">Pulls Wazuh vulnerability scan results, cross-checks the CISA KEV catalog, and prioritizes patches by exploitability score. Assigns remediation owners and tracks SLA compliance.</div>
+          <div class="agent-tools">
+            <span class="tool-tag">Wazuh Vuln API</span>
+            <span class="tool-tag">NVD</span>
+            <span class="tool-tag">CISA KEV</span>
+            <span class="tool-tag">WinRM</span>
+          </div>
+        </div>
+        <div class="agent-card" style="--card-accent: #f472b6">
+          <div class="agent-header">
+            <div class="agent-name" style="color: #f472b6">Ironclad</div>
+            <span class="agent-status status-active">ACTIVE</span>
+          </div>
+          <div class="agent-role">Sr. Security Engineer &amp; Endpoint DLP</div>
+          <div class="agent-desc">Enforces data loss prevention policies, monitors USB storage and clipboard events, detects process injection, and manages endpoint isolation via Wazuh active response or Defender ATP.</div>
+          <div class="agent-tools">
+            <span class="tool-tag">WinRM</span>
+            <span class="tool-tag">Wazuh AR</span>
+            <span class="tool-tag">Sysmon</span>
+            <span class="tool-tag">Defender ATP</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIER 2 -->
+    <div class="tier">
+      <div class="tier-label">
+        <span>Tier 2 — Specialized</span>
+        <div class="tier-line"></div>
+      </div>
+      <div class="agent-grid">
+        <div class="agent-card" style="--card-accent: #34d399">
+          <div class="agent-header">
+            <div class="agent-name" style="color: #34d399">ComplyBot</div>
+            <span class="agent-status status-active">ACTIVE</span>
+          </div>
+          <div class="agent-role">Compliance — HIPAA, PCI, GDPR, SOC 2</div>
+          <div class="agent-desc">Runs continuous SCA checks against compliance frameworks. Tracks policy violations, generates audit reports, and maintains the audit trail for every automated remediation action.</div>
+          <div class="agent-tools">
+            <span class="tool-tag">Wazuh SCA</span>
+            <span class="tool-tag">AD Query</span>
+            <span class="tool-tag">WinRM</span>
+          </div>
+        </div>
+        <div class="agent-card" style="--card-accent: #fbbf24">
+          <div class="agent-header">
+            <div class="agent-name" style="color: #fbbf24">PatchMaster</div>
+            <span class="agent-status status-active">ACTIVE</span>
+          </div>
+          <div class="agent-role">Patch Lifecycle Management</div>
+          <div class="agent-desc">Tracks missing patches across all endpoints, schedules deployment windows, runs PowerShell patch execution via WinRM, and verifies post-patch state. Respects prod freeze windows.</div>
+          <div class="agent-tools">
+            <span class="tool-tag">WinRM</span>
+            <span class="tool-tag">CISA KEV</span>
+            <span class="tool-tag">Wazuh API</span>
+          </div>
+        </div>
+        <div class="agent-card" style="--card-accent: #38bdf8">
+          <div class="agent-header">
+            <div class="agent-name" style="color: #38bdf8">CertSentry</div>
+            <span class="agent-status status-active">ACTIVE</span>
+          </div>
+          <div class="agent-role">SSL/TLS Certificate Monitoring</div>
+          <div class="agent-desc">Monitors every certificate across public domains, internal services, and Windows machine cert stores. Alerts at 30/14/7/3 days. Triggers certbot renewal and monitors certificate transparency logs for lookalike domains.</div>
+          <div class="agent-tools">
+            <span class="tool-tag">openssl</span>
+            <span class="tool-tag">certbot</span>
+            <span class="tool-tag">crt.sh</span>
+            <span class="tool-tag">WinRM</span>
+          </div>
+        </div>
+        <div class="agent-card" style="--card-accent: #818cf8">
+          <div class="agent-header">
+            <div class="agent-name" style="color: #818cf8">CloudGuard</div>
+            <span class="agent-status status-config">CONFIG</span>
+          </div>
+          <div class="agent-role">Cloud Posture &amp; Misconfiguration</div>
+          <div class="agent-desc">Audits AWS and Azure configurations for public S3 buckets, over-permissive IAM roles, missing MFA, and CloudTrail gaps. Reads Shodan for unexpected external exposure. Read-only access only.</div>
+          <div class="agent-tools">
+            <span class="tool-tag">AWS boto3</span>
+            <span class="tool-tag">CloudTrail</span>
+            <span class="tool-tag">Shodan</span>
+            <span class="tool-tag">GuardDuty</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIER 3 -->
+    <div class="tier">
+      <div class="tier-label">
+        <span>Tier 3 — Response &amp; Intelligence</span>
+        <div class="tier-line"></div>
+      </div>
+      <div class="agent-grid">
+        <div class="agent-card" style="--card-accent: #f87171">
+          <div class="agent-header">
+            <div class="agent-name" style="color: #f87171">IncidentBot</div>
+            <span class="agent-status status-active">ACTIVE</span>
+          </div>
+          <div class="agent-role">Incident Response Playbooks</div>
+          <div class="agent-desc">Activated by Sarge on RED threat level. Walks through IR playbooks step-by-step — containment, eradication, recovery. Can isolate endpoints, disable AD accounts, and force password resets with operator approval.</div>
+          <div class="agent-tools">
+            <span class="tool-tag">Wazuh AR</span>
+            <span class="tool-tag">AD Disable</span>
+            <span class="tool-tag">Endpoint Isolate</span>
+            <span class="tool-tag">Notify</span>
+          </div>
+        </div>
+        <div class="agent-card" style="--card-accent: #c084fc">
+          <div class="agent-header">
+            <div class="agent-name" style="color: #c084fc">DarkEye</div>
+            <span class="agent-status status-config">CONFIG</span>
+          </div>
+          <div class="agent-role">Dark Web &amp; Threat Intelligence</div>
+          <div class="agent-desc">Pulls from HIBP for breached domain accounts, scans OTX and MalwareBazaar for IOCs matching your infrastructure, monitors CISA KEV for newly exploited CVEs, and checks crt.sh for brand-impersonation certs.</div>
+          <div class="agent-tools">
+            <span class="tool-tag">HIBP</span>
+            <span class="tool-tag">OTX</span>
+            <span class="tool-tag">MalwareBazaar</span>
+            <span class="tool-tag">CISA KEV</span>
+          </div>
+        </div>
+        <div class="agent-card" style="--card-accent: #fb923c">
+          <div class="agent-header">
+            <div class="agent-name" style="color: #fb923c">IDGuard</div>
+            <span class="agent-status status-active">ACTIVE</span>
+          </div>
+          <div class="agent-role">Identity, Access &amp; UEBA</div>
+          <div class="agent-desc">Monitors Active Directory for dormant accounts, privilege escalation, failed login spikes, and after-hours access. Custom Wazuh rules fire on brute force (T1110.001) and unauthorized admin group additions (T1098).</div>
+          <div class="agent-tools">
+            <span class="tool-tag">AD Query</span>
+            <span class="tool-tag">WinRM</span>
+            <span class="tool-tag">Wazuh Rules</span>
+            <span class="tool-tag">AD Disable</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section>
+    <div class="section-header">
+      <div class="section-eyebrow">How It Works</div>
+      <h2>From Log Line to Slack in Seconds</h2>
+    </div>
+    <div class="pipeline">
+      <div class="pipeline-step">
+        <div class="step-num">01</div>
+        <div class="step-title">Ingest</div>
+        <div class="step-desc">Wazuh agents on Windows endpoints forward logs via WireGuard VPN to the Wazuh Manager on your Hostinger VPS. Sysmon captures process creation, network, and file events.</div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-num">02</div>
+        <div class="step-title">Detect</div>
+        <div class="step-desc">Custom cybershield_rules.xml fires on brute force, USB events, Tor connections, and privileged group changes. MITRE ATT&amp;CK IDs are tagged on every alert.</div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-num">03</div>
+        <div class="step-title">Analyze</div>
+        <div class="step-desc">n8n workflows at n8n.sarge.cloud query the Wazuh Indexer, call the Claude API via Sarge, and correlate findings across agents for context-rich analysis.</div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-num">04</div>
+        <div class="step-title">Brief &amp; Respond</div>
+        <div class="step-desc">Daily 08:00 briefing posted to Slack. Critical events trigger immediate PagerDuty alerts. IncidentBot activates on RED events — isolation and AD lockout require one approval click.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- THREAT LEVELS -->
+  <section id="threat-levels">
+    <div class="section-header">
+      <div class="section-eyebrow">Threat Scale</div>
+      <h2>Sarge Threat Level System</h2>
+    </div>
+    <div style="overflow-x: auto;">
+      <table class="threat-table">
+        <thead>
+          <tr>
+            <th>Level</th>
+            <th>Criteria</th>
+            <th>Sarge Response</th>
+            <th>Agents Activated</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="level-badge level-green">GREEN</span></td>
+            <td>No critical findings, all agents nominal</td>
+            <td>Daily briefing only</td>
+            <td>All — passive monitoring</td>
+          </tr>
+          <tr>
+            <td><span class="level-badge level-yellow">YELLOW</span></td>
+            <td>1–2 high-severity findings, no active exploitation</td>
+            <td>Briefing + agent tasking</td>
+            <td>VulnScan, PatchMaster, IDGuard</td>
+          </tr>
+          <tr>
+            <td><span class="level-badge level-orange">ORANGE</span></td>
+            <td>Active threat indicator, unpatched critical CVE</td>
+            <td>Real-time Slack alert + incident prep</td>
+            <td>NetWatch, DarkEye, Ironclad, IDGuard</td>
+          </tr>
+          <tr>
+            <td><span class="level-badge level-red">RED</span></td>
+            <td>Active incident or confirmed breach indicator</td>
+            <td>IncidentBot activated, full IR playbook</td>
+            <td>All — IncidentBot leads</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- TECH STACK -->
+  <section id="stack">
+    <div class="section-header">
+      <div class="section-eyebrow">Technology Stack</div>
+      <h2>Built on Proven Open Security Tools</h2>
+    </div>
+    <div class="stack-grid">
+      <div class="stack-item">
+        <div class="stack-dot" style="background: var(--accent)"></div>
+        <div class="stack-name">Wazuh 4.7.5</div>
+        <div class="stack-role">SIEM + HIDS + Vulnerability Scanner</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-dot" style="background: var(--green)"></div>
+        <div class="stack-name">n8n</div>
+        <div class="stack-role">Workflow automation engine (n8n.sarge.cloud)</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-dot" style="background: #a78bfa"></div>
+        <div class="stack-name">Claude API</div>
+        <div class="stack-role">AI analysis &amp; briefing generation</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-dot" style="background: var(--amber)"></div>
+        <div class="stack-name">Traefik v3</div>
+        <div class="stack-role">Reverse proxy + auto Let's Encrypt TLS</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-dot" style="background: #22d3ee"></div>
+        <div class="stack-name">WireGuard VPN</div>
+        <div class="stack-role">Encrypted tunnel: VPS ↔ endpoints</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-dot" style="background: var(--orange)"></div>
+        <div class="stack-name">Sysmon</div>
+        <div class="stack-role">Deep Windows telemetry (ETW)</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-dot" style="background: #f472b6"></div>
+        <div class="stack-name">WinRM HTTPS</div>
+        <div class="stack-role">Remote PowerShell execution (port 5986)</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-dot" style="background: #818cf8"></div>
+        <div class="stack-name">Docker Compose</div>
+        <div class="stack-role">Container orchestration on Hostinger VPS</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-dot" style="background: #34d399"></div>
+        <div class="stack-name">OpenSearch</div>
+        <div class="stack-role">Wazuh alert index + full-text search</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUICK SETUP -->
+  <section id="setup">
+    <div class="section-header">
+      <div class="section-eyebrow">Getting Started</div>
+      <h2>Deploy in Four Steps</h2>
+      <p>Full playbooks in <code style="font-family:var(--mono);font-size:13px;color:var(--accent)">/cybershield/playbooks/</code></p>
+    </div>
+    <div class="pipeline" style="border-radius:8px">
+      <div class="pipeline-step">
+        <div class="step-num" style="color: color-mix(in srgb, var(--green) 30%, transparent)">1</div>
+        <div class="step-title">VPS + Wazuh</div>
+        <div class="step-desc">Hostinger Ubuntu 22.04+, run <code style="font-family:var(--mono);font-size:12px">bash wazuh-install.sh -a</code>. See <strong>wazuh-hostinger-setup.md</strong>.</div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-num" style="color: color-mix(in srgb, var(--green) 30%, transparent)">2</div>
+        <div class="step-title">WireGuard + WinRM</div>
+        <div class="step-desc">Establish VPN tunnel, enable WinRM HTTPS on port 5986, create <code style="font-family:var(--mono);font-size:12px">svc_cybershield</code> service account.</div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-num" style="color: color-mix(in srgb, var(--green) 30%, transparent)">3</div>
+        <div class="step-title">n8n + Docker</div>
+        <div class="step-desc">Deploy Traefik + n8n via Docker Compose. Point <code style="font-family:var(--mono);font-size:12px">n8n.yourdomain.com</code> DNS. Import briefing workflows.</div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-num" style="color: color-mix(in srgb, var(--green) 30%, transparent)">4</div>
+        <div class="step-title">API Keys</div>
+        <div class="step-desc">Add keys for Anthropic, Shodan, VirusTotal, OTX, and HIBP to your <code style="font-family:var(--mono);font-size:12px">.env</code>. Load agent system prompts into n8n.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>CyberShield Analytics · sarge.cloud · Wazuh 4.7.5</p>
+    <ul class="footer-links">
+      <li><a href="#agents">Agents</a></li>
+      <li><a href="#stack">Stack</a></li>
+      <li><a href="#setup">Setup</a></li>
+    </ul>
+  </footer>
+
+</div>
