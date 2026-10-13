@@ -1,0 +1,57 @@
+# CyberShield RedTeam — Metasploit Authorized Test Script
+# Run with: msfconsole -q -r /opt/cybershield/redteam/scripts/metasploit-authorized-test.rc
+#
+# REQUIRES: Explicit operator authorization
+# REQUIRES: Sarge notified before running
+# ONLY targets: systems in authorized scope list
+#
+# This script runs a controlled exploitation test against
+# your own infrastructure to verify patch effectiveness
+
+# Connect to database for storing results
+db_connect -y /opt/metasploit-framework/config/database.yml
+
+# Set workspace for this engagement
+workspace -a cybershield_authorized_$(date +%Y%m%d)
+
+# ── PHASE 1: Port scan and import results ──────────────────────
+echo "[*] Phase 1: Importing scope into Metasploit"
+db_nmap -sV -sC -T3 sarge.cloud
+
+# ── PHASE 2: Vulnerability verification (no exploitation) ──────
+echo "[*] Phase 2: Running vulnerability verification modules"
+
+# Check for SMB vulnerabilities (EternalBlue family)
+use auxiliary/scanner/smb/smb_ms17_010
+set RHOSTS sarge.cloud
+set THREADS 1
+run
+back
+
+# Check for SSH version vulnerabilities
+use auxiliary/scanner/ssh/ssh_version
+set RHOSTS sarge.cloud
+set RPORT 22
+run
+back
+
+# Check for open admin interfaces
+use auxiliary/scanner/http/http_version
+set RHOSTS sarge.cloud
+set RPORT 8443
+set SSL true
+run
+back
+
+# ── PHASE 3: Generate report ───────────────────────────────────
+echo "[*] Phase 3: Generating findings report"
+vulns -o /opt/cybershield/redteam/reports/msf_vulns_$(date +%Y%m%d).csv
+
+echo ""
+echo "[+] Metasploit authorized test complete."
+echo "[+] Vulnerability report: /opt/cybershield/redteam/reports/msf_vulns_$(date +%Y%m%d).csv"
+echo "[+] Route findings to VulnScan agent for CVSS scoring."
+echo "[+] Notify Sarge of engagement completion."
+echo ""
+
+exit
